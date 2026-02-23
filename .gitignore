@@ -1,0 +1,6 @@
+/fuel/vendor/
+/fuel/app/logs/*
+/fuel/app/cache/*
+/fuel/app/config/development/db.php
+.DS_Store
+Thumbs.db

@@ -1,0 +1,140 @@
+/* ============================================================
+   Auth CSS — ログイン画面
+   メインカラー: #050CC7  /  50%半透明: rgba(5, 12, 199, 0.5)
+   ============================================================ */
+
+/* ---------- ベース ---------- */
+body {
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    background-color: #f4f5fb;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---------- ヘッダー帯 ---------- */
+.login-header {
+    width: 100%;
+    background-color: rgba(5, 12, 199, 0.5);
+    padding: 14px 24px;
+}
+
+.login-header__title {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+/* ---------- メインエリア ---------- */
+.login-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 16px 48px;
+}
+
+/* ---------- カード ---------- */
+.login-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 16px rgba(5, 12, 199, 0.12);
+    padding: 36px 32px 40px;
+}
+
+/* ---------- エラーメッセージ ---------- */
+.login-error {
+    background-color: #fff0f0;
+    border-left: 4px solid #e53935;
+    color: #c62828;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+/* ---------- フォーム ---------- */
+.login-form__group {
+    margin-bottom: 20px;
+}
+
+.login-form__label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #050CC7;
+    margin-bottom: 6px;
+    letter-spacing: 0.03em;
+}
+
+.login-form__input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 1rem;
+    font-family: inherit;
+    background-color: rgba(5, 12, 199, 0.5);
+    border: none;
+    border-radius: 6px;
+    color: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    transition: background-color 0.2s;
+}
+
+.login-form__input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.login-form__input:focus {
+    background-color: rgba(5, 12, 199, 0.65);
+    box-shadow: 0 0 0 3px rgba(5, 12, 199, 0.2);
+}
+
+/* ---------- ログインボタン ---------- */
+.login-form__submit {
+    text-align: center;
+    margin-top: 28px;
+}
+
+.login-btn {
+    display: inline-block;
+    background-color: rgba(5, 12, 199, 0.5);
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.1em;
+    padding: 10px 48px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.login-btn:hover,
+.login-btn:focus {
+    background-color: rgba(5, 12, 199, 0.7);
+    box-shadow: 0 4px 12px rgba(5, 12, 199, 0.3);
+    outline: none;
+}
+
+.login-btn:active {
+    background-color: rgba(5, 12, 199, 0.85);
+}
+
+/* ---------- レスポンシブ調整 ---------- */
+@media (max-width: 575.98px) {
+    .login-card {
+        padding: 28px 20px 32px;
+    }
+
+    .login-header__title {
+        font-size: 1rem;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 12px 0;
+    }
+}

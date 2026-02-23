@@ -1,0 +1,115 @@
+/* ============================================================
+   Admin CSS — 塾長ホーム
+   メインカラー: #050CC7  /  50%半透明: rgba(5, 12, 199, 0.5)
+   ============================================================ */
+
+/* ---------- ベース ---------- */
+body {
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    background-color: #f4f5fb;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---------- ヘッダー帯 ---------- */
+.admin-header {
+    width: 100%;
+    background-color: rgba(5, 12, 199, 0.5);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.admin-header__greeting {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.admin-header__logout {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    padding: 4px 14px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.admin-header__logout:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+/* ---------- メインエリア ---------- */
+.admin-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 52px);
+    padding: 48px 16px;
+}
+
+/* ---------- メニューボタン群 ---------- */
+.admin-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.admin-menu__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 420px;
+    padding: 28px 24px;
+    background-color: #e8e8e8;
+    color: #1a1a1a;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    border-radius: 8px;
+    text-decoration: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+    transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    text-align: center;
+}
+
+.admin-menu__btn:hover {
+    background-color: #d8d8d8;
+    color: #1a1a1a;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.admin-menu__btn:active {
+    background-color: #cccccc;
+    transform: translateY(0);
+}
+
+/* ---------- レスポンシブ調整 ---------- */
+@media (max-width: 575.98px) {
+    .admin-header {
+        padding: 12px 16px;
+    }
+
+    .admin-header__greeting {
+        font-size: 0.9rem;
+    }
+
+    .admin-menu__btn {
+        padding: 24px 16px;
+        font-size: 1rem;
+        max-width: 100%;
+    }
+}

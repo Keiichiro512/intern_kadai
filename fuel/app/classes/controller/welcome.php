@@ -39,9 +39,11 @@ class Controller_Welcome extends Controller
 	 * @access  public
 	 * @return  Response
 	 */
-	public function action_hello()
-	{
-		return Response::forge(Presenter::forge('welcome/hello'));
+	public function action_hello(){
+		//  return Response::forge(Presenter::forge('welcome/hello'));
+		$this->name = Request::active()->param('name', 'World'); 
+		$message = "Hello, " . $this->name . "test test";  
+		echo $message;
 	}
 
 	/**
