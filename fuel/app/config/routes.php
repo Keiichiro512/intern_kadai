@@ -7,9 +7,15 @@ return array(
 
     // 認証
     'auth/login'   => 'auth/login',
+    'auth/logout'  => 'auth/logout',
 
     // 塾長（マスタ）画面
     'admin/home'        => 'admin/home',
     'admin/user_create' => 'admin/create',
     'masters_home'      => 'admin/home',
+
+    // 各ロールのトップページ
+    'teacher/home' => 'teacher/home',
+    'student/home' => 'student/home',
+    'parent/home'  => 'parent/home',
 );

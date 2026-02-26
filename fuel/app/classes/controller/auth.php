@@ -12,14 +12,40 @@ class Controller_Auth extends Controller_Template
         $error = false;
 
         if (Input::method() === 'POST') {
-            $username = Input::post('username');
-            $password = Input::post('password');
+            $username = trim((string) Input::post('username', ''));
+            $password = (string) Input::post('password', '');
 
-            // TODO: 実際の認証処理に置き換える
-            if ($username !== 'admin' || $password !== 'password') {
+            $user = Model_User::find('first', array(
+                'where' => array(
+                    array('username', $username),
+                ),
+            ));
+
+            if (empty($user) || ! $this->verify_password($password, (string) $user->password)) {
                 $error = true;
             } else {
-                Response::redirect('/');
+                Session::set('user_id', (int) $user->id);
+                Session::set('role_id', (int) $user->role_id);
+                Session::set('username', (string) $user->username);
+
+                switch ((int) $user->role_id) {
+                    case 1: // 塾長
+                        Response::redirect('admin/home');
+                        break;
+                    case 2: // 講師
+                        Response::redirect('teacher/home');
+                        break;
+                    case 3: // 生徒
+                        Response::redirect('student/home');
+                        break;
+                    case 4: // 保護者
+                        Response::redirect('parent/home');
+                        break;
+                    default:
+                        Session::destroy();
+                        $error = true;
+                        break;
+                }
             }
         }
 
@@ -27,5 +53,25 @@ class Controller_Auth extends Controller_Template
             'error'    => $error,
             'username' => Input::post('username', ''),
         ]);
+    }
+
+    public function action_logout()
+    {
+        Session::destroy();
+        Response::redirect('auth/login');
+    }
+
+    private function verify_password($input_password, $stored_password)
+    {
+        if ($stored_password === '') {
+            return false;
+        }
+
+        // bcrypt / password_hash 形式なら verify、そうでなければ平文比較
+        if (strpos($stored_password, '$2y$') === 0 || strpos($stored_password, '$2a$') === 0 || strpos($stored_password, '$2b$') === 0) {
+            return password_verify($input_password, $stored_password);
+        }
+
+        return hash_equals($stored_password, $input_password);
     }
 }
