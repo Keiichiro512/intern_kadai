@@ -8,7 +8,7 @@ return array(
 		'type'        => 'mysqli',
 		'connection'  => array(
 			'hostname'   => 'db',
-			'database'   => 'fuelphp',
+			'database'   => 'student_management',
 			'username'   => 'root',
 			'password'   => 'root',
 			'persistent' => false,
@@ -18,6 +18,6 @@ return array(
 		'charset'      => 'utf8',
 		'collation'    => 'utf8_unicode_ci',
 		'enable_cache' => true,
-		'profiling'    => false,
+		'profiling'    => true,
 	),
 );

@@ -91,14 +91,16 @@
                         <div class="col-6 col-sm-4">
                             <select id="grade_id" name="grade_id" class="form-select">
                                 <option value="">選択してください</option>
-                                <?php foreach ($grades as $grade): ?>
-                                    <option
-                                        value="<?php echo (int) $grade->id; ?>"
-                                        <?php echo ((string) $input['grade_id'] === (string) $grade->id) ? 'selected' : ''; ?>
-                                    >
-                                        <?php echo e($grade->grade_name); ?>
-                                    </option>
-                                <?php endforeach; ?>
+                                <?php if ( ! empty($grades)): ?>
+                                    <?php foreach ($grades as $grade): ?>
+                                        <option
+                                            value="<?php echo (int) $grade->id; ?>"
+                                            <?php echo ((string) $input['grade_id'] === (string) $grade->id) ? 'selected' : ''; ?>
+                                        >
+                                            <?php echo e($grade->grade_name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
                             </select>
                         </div>
                     </div>
@@ -107,21 +109,25 @@
                     <div class="mb-4">
                         <label class="form-label user-form-label d-block">受講科目：</label>
                         <div class="user-form-subjects">
-                            <?php foreach ($subjects as $subject): ?>
-                                <div class="form-check form-check-inline mb-2">
-                                    <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        name="subject_ids[]"
-                                        id="subject_<?php echo (int) $subject->id; ?>"
-                                        value="<?php echo (int) $subject->id; ?>"
-                                        <?php echo in_array($subject->id, (array) $input['subject_ids'], true) ? 'checked' : ''; ?>
-                                    >
-                                    <label class="form-check-label" for="subject_<?php echo (int) $subject->id; ?>">
-                                        <?php echo e($subject->subject_name); ?>
-                                    </label>
-                                </div>
-                            <?php endforeach; ?>
+                            <?php if ( ! empty($subjects)): ?>
+                                <?php foreach ($subjects as $subject): ?>
+                                    <div class="form-check form-check-inline mb-2">
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            name="subject_ids[]"
+                                            id="subject_<?php echo (int) $subject->id; ?>"
+                                            value="<?php echo (int) $subject->id; ?>"
+                                            <?php echo in_array($subject->id, (array) $input['subject_ids'], true) ? 'checked' : ''; ?>
+                                        >
+                                        <label class="form-check-label" for="subject_<?php echo (int) $subject->id; ?>">
+                                            <?php echo e($subject->subject_name); ?>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <span class="text-muted small">科目マスタが未登録です。</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

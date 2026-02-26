@@ -13,7 +13,7 @@
                 授業スケジュール作成
             </a>
 
-            <a href="<?php echo Uri::create('users/create'); ?>" class="admin-menu__btn">
+            <a href="<?php echo Uri::create('admin/user_create'); ?>" class="admin-menu__btn">
                 講師・生徒を追加する
             </a>
 
