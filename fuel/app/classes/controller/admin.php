@@ -29,23 +29,36 @@ class Controller_Admin extends Controller_Template
 
         // 初期表示用の入力値
         $input = array(
-            'target_type' => 'teacher',
-            'last_name'   => '',
-            'first_name'  => '',
-            'grade_id'    => '',
-            'subject_ids' => array(),
+            'target_type'        => 'teacher',
+            'last_name'          => '',
+            'first_name'         => '',
+            'grade_id'           => '',
+            'subject_ids'        => array(),
+            'parent_last_name'   => '',
+            'parent_first_name'  => '',
+            'parent_password'    => '',
         );
 
         $errors = '';
 
         if (\Input::method() === 'POST') {
-            $input['target_type'] = \Input::post('target_type', 'teacher');
-            $input['last_name']   = trim((string) \Input::post('last_name', ''));
-            $input['first_name']  = trim((string) \Input::post('first_name', ''));
-            $input['grade_id']    = (string) \Input::post('grade_id', '');
-            $input['subject_ids'] = (array) \Input::post('subject_ids', array());
+            $input['target_type']       = \Input::post('target_type', 'teacher');
+            $input['last_name']         = trim((string) \Input::post('last_name', ''));
+            $input['first_name']        = trim((string) \Input::post('first_name', ''));
+            $input['grade_id']          = (string) \Input::post('grade_id', '');
+            $input['subject_ids']       = (array) \Input::post('subject_ids', array());
+            $input['parent_last_name']  = trim((string) \Input::post('parent_last_name', ''));
+            $input['parent_first_name'] = trim((string) \Input::post('parent_first_name', ''));
+            $input['parent_password']   = trim((string) \Input::post('parent_password', ''));
 
             $raw_password = (string) \Input::post('password', '');
+
+            $has_parent_input = false;
+            if ($input['target_type'] === 'student') {
+                if ($input['parent_last_name'] !== '' || $input['parent_first_name'] !== '' || $input['parent_password'] !== '') {
+                    $has_parent_input = true;
+                }
+            }
 
             $val = \Validation::forge();
             $val->add('target_type', '対象')
@@ -67,6 +80,18 @@ class Controller_Admin extends Controller_Template
                     ->add_rule('required');
                 $val->add('subject_ids', '受講科目')
                     ->add_rule('required');
+
+                if ($has_parent_input) {
+                    $val->add('parent_last_name', '保護者氏')
+                        ->add_rule('required')
+                        ->add_rule('max_length', 50);
+                    $val->add('parent_first_name', '保護者名')
+                        ->add_rule('required')
+                        ->add_rule('max_length', 50);
+                    $val->add('parent_password', '保護者パスワード')
+                        ->add_rule('required')
+                        ->add_rule('min_length', 6);
+                }
             }
 
             if ( ! $val->run($input)) {
@@ -76,7 +101,8 @@ class Controller_Admin extends Controller_Template
                     \DB::start_transaction();
 
                     $auth = \Auth::instance();
-                    $hashed_password = $auth->hash_password($raw_password);
+                    $hashed_password        = $auth->hash_password($raw_password);
+                    $hashed_parent_password = $has_parent_input ? $auth->hash_password($input['parent_password']) : null;
 
                     $role_id = ($input['target_type'] === 'teacher') ? 2 : 3;
                     $username = $input['last_name'] . $input['first_name'];
@@ -108,6 +134,25 @@ class Controller_Admin extends Controller_Template
                                 'subject_id'      => $subject_id,
                             ));
                             $student_subject->save();
+                        }
+
+                        if ($has_parent_input && $hashed_parent_password !== null) {
+                            $parent_username = $input['parent_last_name'] . $input['parent_first_name'];
+
+                            $parent_user = Model_User::forge(array(
+                                'role_id'    => 4,
+                                'username'   => $parent_username,
+                                'password'   => $hashed_parent_password,
+                                'first_name' => $input['parent_first_name'],
+                                'last_name'  => $input['parent_last_name'],
+                            ));
+                            $parent_user->save();
+
+                            $relation = Model_Parent_Student_Relation::forge(array(
+                                'parent_user_id'  => (int) $parent_user->id,
+                                'student_user_id' => (int) $user->id,
+                            ));
+                            $relation->save();
                         }
                     }
 

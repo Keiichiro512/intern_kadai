@@ -126,6 +126,56 @@
                     </div>
                 </div>
 
+                <!-- 保護者情報（生徒選択時のみ表示） -->
+                <div id="parent-fields" class="<?php echo ($input['target_type'] === 'student') ? '' : 'd-none'; ?>">
+                    <h2 class="h5 mb-3">保護者情報（任意）</h2>
+
+                    <!-- 保護者氏名 -->
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-auto">
+                            <label for="parent_last_name" class="col-form-label user-form-label">保護者 氏</label>
+                        </div>
+                        <div class="col">
+                            <input
+                                type="text"
+                                id="parent_last_name"
+                                name="parent_last_name"
+                                class="form-control"
+                                value="<?php echo e($input['parent_last_name']); ?>"
+                            >
+                        </div>
+
+                        <div class="col-auto">
+                            <label for="parent_first_name" class="col-form-label user-form-label">保護者 名</label>
+                        </div>
+                        <div class="col">
+                            <input
+                                type="text"
+                                id="parent_first_name"
+                                name="parent_first_name"
+                                class="form-control"
+                                value="<?php echo e($input['parent_first_name']); ?>"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- 保護者パスワード -->
+                    <div class="row g-3 align-items-center mb-4">
+                        <div class="col-auto">
+                            <label for="parent_password" class="col-form-label user-form-label">保護者パスワード</label>
+                        </div>
+                        <div class="col">
+                            <input
+                                type="password"
+                                id="parent_password"
+                                name="parent_password"
+                                class="form-control"
+                                autocomplete="new-password"
+                            >
+                        </div>
+                    </div>
+                </div>
+
                 <!-- パスワード -->
                 <div class="row g-3 align-items-center mb-4">
                     <div class="col-auto">
@@ -157,12 +207,19 @@
         const studentRadio = document.getElementById('target_student');
         const teacherRadio = document.getElementById('target_teacher');
         const studentExtra = document.getElementById('student-extra-fields');
+        const parentFields = document.getElementById('parent-fields');
 
         function updateVisibility() {
             if (studentRadio.checked) {
                 studentExtra.classList.remove('d-none');
+                if (parentFields) {
+                    parentFields.classList.remove('d-none');
+                }
             } else {
                 studentExtra.classList.add('d-none');
+                if (parentFields) {
+                    parentFields.classList.add('d-none');
+                }
             }
         }
 
