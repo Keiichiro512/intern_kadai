@@ -67,6 +67,16 @@ class Controller_Auth extends Controller_Template
             return false;
         }
 
+        // FuelPHP Auth(SimpleAuth) で保存されたハッシュであれば validate_password を優先して使う
+        try {
+            $auth = \Auth::instance();
+            if ($auth->validate_password($input_password, $stored_password)) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Auth が利用できない場合は後続のロジックにフォールバック
+        }
+
         // bcrypt / password_hash 形式なら verify、そうでなければ平文比較
         if (strpos($stored_password, '$2y$') === 0 || strpos($stored_password, '$2a$') === 0 || strpos($stored_password, '$2b$') === 0) {
             return password_verify($input_password, $stored_password);

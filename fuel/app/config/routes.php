@@ -12,6 +12,7 @@ return array(
     // 塾長（マスタ）画面
     'admin/home'        => 'admin/home',
     'admin/user_create' => 'admin/create',
+    'admin/user_create_complete' => 'admin/create_complete',
     'masters_home'      => 'admin/home',
 
     // 各ロールのトップページ

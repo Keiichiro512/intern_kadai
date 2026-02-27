@@ -10,15 +10,9 @@
         <div class="user-form-card shadow-sm">
             <h1 class="user-form-title">生徒・講師を追加する</h1>
 
-            <?php if (!empty($error)): ?>
+            <?php if (!empty($errors)): ?>
                 <div class="alert alert-danger" role="alert">
-                    <?php echo e($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success" role="alert">
-                    <?php echo e($success); ?>
+                    <?php echo $errors; ?>
                 </div>
             <?php endif; ?>
 
@@ -129,6 +123,22 @@
                                 <span class="text-muted small">科目マスタが未登録です。</span>
                             <?php endif; ?>
                         </div>
+                    </div>
+                </div>
+
+                <!-- パスワード -->
+                <div class="row g-3 align-items-center mb-4">
+                    <div class="col-auto">
+                        <label for="password" class="col-form-label user-form-label">パスワード</label>
+                    </div>
+                    <div class="col">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-control"
+                            autocomplete="new-password"
+                        >
                     </div>
                 </div>
 
