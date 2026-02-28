@@ -4,47 +4,69 @@ class Controller_Auth extends Controller_Template
 {
     public $template = 'template';
 
+    public function before()
+    {
+        return parent::before();
+    }
+
     public function action_login()
     {
         $this->template->title       = 'ログイン';
         $this->template->style_sheet = 'auth.css';
-
         $error = false;
 
         if (Input::method() === 'POST') {
             $username = trim((string) Input::post('username', ''));
             $password = (string) Input::post('password', '');
 
-            $user = Model_User::find('first', array(
-                'where' => array(
-                    array('username', $username),
-                ),
-            ));
-
-            if (empty($user) || ! $this->verify_password($password, (string) $user->password)) {
+            if ($password === '') {
                 $error = true;
             } else {
-                Session::set('user_id', (int) $user->id);
-                Session::set('role_id', (int) $user->role_id);
-                Session::set('username', (string) $user->username);
+                $user = Model_User::find('first', array(
+                    'where' => array(
+                        array('username', $username),
+                    ),
+                ));
 
-                switch ((int) $user->role_id) {
-                    case 1: // 塾長
-                        Response::redirect('admin/home');
-                        break;
-                    case 2: // 講師
-                        Response::redirect('teacher/home');
-                        break;
-                    case 3: // 生徒
-                        Response::redirect('student/home');
-                        break;
-                    case 4: // 保護者
-                        Response::redirect('parent/home');
-                        break;
-                    default:
-                        Session::destroy();
-                        $error = true;
-                        break;
+                $stored_hash = $user ? (string) $user->password : '';
+
+                $query = \DB::select('password')
+                    ->from('users')
+                    ->where('username', $username)
+                    ->execute();
+                $raw_hash = $query->get('password');
+
+                $clean_hash = trim((string) $raw_hash);
+                $is_valid = password_verify($password, $clean_hash);
+
+                $verify_ok = $this->verify_password($password, $stored_hash);
+                $verify_ok = ($verify_ok || $is_valid);
+
+                if (empty($user) || ! $verify_ok) {
+                    $error = true;
+                } else {
+                    Session::set('user_id', (int) $user->id);
+                    Session::set('role_id', (int) $user->role_id);
+                    Session::set('username', (string) $user->username);
+
+                    switch ((int) $user->role_id) {
+                        case 1: // 塾長
+                            Response::redirect('admin/home');
+                            break;
+                        case 2: // 講師
+                            Response::redirect('teacher/home');
+                            break;
+                        case 3: // 生徒
+                            Response::redirect('student/home');
+                            break;
+                        case 4: // 保護者
+                            Response::redirect('parent/home');
+                            break;
+                        default:
+                            Session::destroy();
+                            $error = true;
+                            break;
+                    }
                 }
             }
         }
@@ -61,18 +83,17 @@ class Controller_Auth extends Controller_Template
         Response::redirect('auth/login');
     }
 
-    private function verify_password($input_password, $stored_password)
+    /**
+     * 入力パスワードとDBのハッシュを照合する。
+     * DBには password_hash($raw, PASSWORD_DEFAULT) で保存された値が入っている前提。
+     * 必ず password_verify（平文・ハッシュのペア）で検証し、他方式は使わない。
+     */
+    private function verify_password($input_password, $stored_hash)
     {
-        if ($stored_password === '') {
+        if ($stored_hash === '' || $input_password === '') {
             return false;
         }
 
-        // password_hash（bcrypt）形式なら PHP 標準の password_verify を使用
-        if (strpos($stored_password, '$2y$') === 0 || strpos($stored_password, '$2a$') === 0 || strpos($stored_password, '$2b$') === 0) {
-            return password_verify($input_password, $stored_password);
-        }
-
-        // 古い形式（平文など）の場合は定数時間比較
-        return hash_equals($stored_password, $input_password);
+        return password_verify($input_password, $stored_hash);
     }
 }
