@@ -17,6 +17,9 @@ return array(
 
     // 塾長（マスタ）画面（URL は admin/ 始まりに統一し、Controller_Base の権限チェックを有効にする）
     'admin/home'                  => 'admin/home',
+    'admin/schedule'              => 'admin/schedule_home',
+    'admin/schedule/save'         => 'admin/schedule_save',
+    'admin/schedule/delete'       => 'admin/schedule_delete',
     'admin/user_create'           => 'admin/create',
     'admin/user_create_complete'  => 'admin/create_complete',
     'admin/users/edit'            => 'admin/user_list',

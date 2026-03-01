@@ -19,4 +19,3 @@ class Model_Time_Slot extends \Orm\Model
         ),
     );
 }
-

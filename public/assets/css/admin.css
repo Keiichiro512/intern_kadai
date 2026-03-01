@@ -218,6 +218,541 @@ body {
     text-decoration: none;
 }
 
+/* ---------- スケジュール管理画面（3エリアレイアウト） ---------- */
+.admin-main--schedule {
+    align-items: stretch;
+    justify-content: stretch;
+    min-height: calc(100vh - 52px);
+    padding: 16px;
+}
+
+.schedule-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr 220px;
+    gap: 16px;
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 0;
+}
+
+/* 左・右サイドバー共通 */
+.schedule-sidebar {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.schedule-sidebar__block {
+    margin-bottom: 24px;
+}
+
+.schedule-sidebar__block:last-child {
+    margin-bottom: 0;
+}
+
+.schedule-sidebar__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(5, 12, 199, 0.3);
+}
+
+.schedule-sidebar__grade {
+    margin-bottom: 14px;
+}
+
+.schedule-sidebar__grade:last-child {
+    margin-bottom: 0;
+}
+
+.schedule-sidebar__grade-heading {
+    background-color: #e8e8e8;
+    color: #1a1a1a;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.schedule-sidebar__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.schedule-sidebar__item {
+    font-size: 0.9rem;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    color: #1a1a1a;
+}
+
+.schedule-sidebar__item:last-child {
+    border-bottom: none;
+}
+
+.schedule-sidebar__item--empty {
+    color: #888;
+    font-style: italic;
+}
+
+/* 中央メイン：スケジュール表示 */
+.schedule-main {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+    overflow-y: auto;
+    min-width: 0;
+}
+
+.schedule-main__header {
+    margin-bottom: 16px;
+}
+
+.schedule-main__date {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.schedule-main__slots {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.schedule-slot {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.schedule-slot:last-child {
+    border-bottom: none;
+}
+
+.schedule-slot__label {
+    flex-shrink: 0;
+    width: 72px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.schedule-slot__cells {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.schedule-slot__cell {
+    background-color: #f4f5fb;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    padding: 10px 14px;
+    min-width: 140px;
+    font-size: 0.9rem;
+}
+
+button.schedule-slot__cell {
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    width: 100%;
+}
+
+.schedule-slot__cell--clickable:hover {
+    background-color: rgba(5, 12, 199, 0.08);
+    border-color: #050CC7;
+}
+
+.schedule-slot__cell--empty {
+    color: #888;
+    font-style: italic;
+}
+
+.schedule-slot__teacher,
+.schedule-slot__student,
+.schedule-slot__subject {
+    display: block;
+}
+
+.schedule-slot__teacher {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.schedule-slot__student {
+    color: #333;
+}
+
+.schedule-slot__subject {
+    font-size: 0.85rem;
+    color: #050CC7;
+    margin-top: 2px;
+}
+
+/* 右サイドバー：カレンダー */
+.schedule-calendar {
+    text-align: center;
+}
+
+.schedule-calendar__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.schedule-calendar__btn {
+    background-color: #e8e8e8;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: #1a1a1a;
+    transition: background-color 0.2s;
+}
+
+.schedule-calendar__nav a.schedule-calendar__btn {
+    text-decoration: none;
+}
+
+.schedule-calendar__btn:hover {
+    background-color: rgba(5, 12, 199, 0.15);
+    border-color: #050CC7;
+    color: #050CC7;
+}
+
+.schedule-calendar__month {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.schedule-calendar__title {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.schedule-calendar__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.schedule-calendar__table th,
+.schedule-calendar__table td {
+    padding: 4px 2px;
+    text-align: center;
+}
+
+.schedule-calendar__table th {
+    font-weight: 600;
+    color: #666;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.schedule-calendar__day {
+    color: #1a1a1a;
+    vertical-align: top;
+}
+
+/* 日付マス：4要素（日付＋A/B/Cコマ）を縦並び・均等高さで表示 */
+.schedule-calendar__day-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 64px;
+    min-height: 64px;
+}
+
+/* セル全体をクリック可能にする Stretched Link */
+.stretched-link {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.stretched-link::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    content: "";
+}
+
+.cell-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+.cell-date {
+    position: relative;
+    z-index: 2;
+    font-weight: 600;
+}
+
+.cell-date .schedule-calendar__day-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.cell-date .schedule-calendar__day-link:hover {
+    text-decoration: underline;
+}
+
+.cell-slot {
+    position: relative;
+    z-index: 2;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.cell-slot.slot-a {
+    background-color: rgba(5, 12, 199, 0.2);
+    color: #050CC7;
+}
+
+.cell-slot.slot-b {
+    background-color: rgba(0, 128, 80, 0.25);
+    color: #006640;
+}
+
+.cell-slot.slot-c {
+    background-color: rgba(180, 80, 0, 0.25);
+    color: #8c4000;
+}
+
+/* 授業なし：場所は確保しつつ非表示 */
+.cell-slot--empty {
+    visibility: hidden;
+}
+
+.schedule-calendar__day-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.schedule-calendar__day:first-child .schedule-calendar__day-link {
+    color: #c00;
+}
+
+.schedule-calendar__day:last-child .schedule-calendar__day-link {
+    color: #00c;
+}
+
+.schedule-calendar__day:first-child {
+    color: #c00;
+}
+
+.schedule-calendar__day:last-child {
+    color: #00c;
+}
+
+.schedule-calendar__day.is-active {
+    background-color: rgba(5, 12, 199, 0.25);
+    font-weight: 700;
+    border-radius: 4px;
+}
+
+.schedule-calendar__day.is-today {
+    outline: 2px solid #050CC7;
+    outline-offset: 1px;
+    border-radius: 4px;
+}
+
+/* スケジュール モーダル */
+.schedule-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.schedule-modal.is-open {
+    display: flex;
+}
+
+.schedule-modal__overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+}
+
+.schedule-modal__box {
+    position: relative;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.schedule-modal__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 20px 0;
+    color: #1a1a1a;
+}
+
+.schedule-modal__form {
+    margin-bottom: 0;
+}
+
+.schedule-modal__field {
+    margin-bottom: 16px;
+}
+
+.schedule-modal__label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #1a1a1a;
+}
+
+.schedule-modal__select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.schedule-modal__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    gap: 16px;
+}
+
+.schedule-modal__actions-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.schedule-modal__actions-right {
+    display: flex;
+    align-items: center;
+}
+
+.schedule-modal__btn {
+    padding: 8px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.schedule-modal__btn--primary {
+    background-color: #050CC7;
+    color: #fff;
+    border-color: #050CC7;
+}
+
+.schedule-modal__btn--primary:hover {
+    background-color: #0409a0;
+    color: #fff;
+}
+
+.schedule-modal__btn--danger {
+    background-color: #dc3545;
+    color: #fff;
+    border-color: #dc3545;
+}
+
+.schedule-modal__btn--danger:hover {
+    background-color: #c82333;
+    color: #fff;
+    border-color: #bd2130;
+}
+
+.schedule-modal__btn--secondary {
+    background-color: #e8e8e8;
+    color: #1a1a1a;
+    border-color: #d0d0d0;
+}
+
+.schedule-modal__btn--secondary:hover {
+    background-color: #d8d8d8;
+}
+
+
+/* スケジュール画面のレスポンシブ */
+@media (max-width: 991.98px) {
+    .schedule-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+    }
+
+    .schedule-sidebar--left {
+        order: 1;
+        max-height: 240px;
+    }
+
+    .schedule-main {
+        order: 2;
+    }
+
+    .schedule-sidebar--right {
+        order: 3;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .admin-main--schedule {
+        padding: 12px;
+    }
+
+    .schedule-slot {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .schedule-slot__label {
+        width: 100%;
+    }
+}
+
 /* ---------- レスポンシブ調整 ---------- */
 @media (max-width: 575.98px) {
     .admin-header {

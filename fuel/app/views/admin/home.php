@@ -3,7 +3,7 @@
     <div class="container">
         <div class="admin-menu">
 
-            <a href="<?php echo Uri::create('schedule'); ?>" class="admin-menu__btn">
+            <a href="<?php echo Uri::create('admin/schedule'); ?>" class="admin-menu__btn">
                 授業スケジュール作成
             </a>
 

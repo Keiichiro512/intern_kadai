@@ -13,6 +13,301 @@ class Controller_Admin extends Controller_Base
     }
 
     /**
+     * スケジュール管理画面。講師・生徒・時間枠・指定日の授業・カレンダーを取得してViewに渡す。
+     */
+    public function action_schedule_home()
+    {
+        $this->template->title       = '授業スケジュール';
+        $this->template->style_sheet = 'admin.css';
+
+        $year  = (int) \Input::get('year', date('Y'));
+        $month = (int) \Input::get('month', date('n'));
+        $month = max(1, min(12, $month));
+        $date_str = \Input::get('date');
+        if ($date_str) {
+            $display_dt = \DateTime::createFromFormat('Y-m-d', $date_str);
+            if ( ! $display_dt) {
+                $display_dt = new \DateTime($year . '-' . $month . '-01');
+            }
+        } else {
+            $today = new \DateTime();
+            if ($year === (int) $today->format('Y') && $month === (int) $today->format('n')) {
+                $display_dt = clone $today;
+            } else {
+                $display_dt = new \DateTime($year . '-' . $month . '-01');
+            }
+        }
+
+        $teachers = \Model_User::find('all', array(
+            'where'    => array(array('role_id', 2)),
+            'order_by' => array('last_name' => 'asc', 'first_name' => 'asc'),
+        ));
+        $teachers = $teachers ?: array();
+
+        $grades = \Model_Grade::find('all', array(
+            'order_by' => array('id' => 'asc'),
+            'related'  => array('students' => array('related' => array('user'))),
+        ));
+        $grades = $grades ?: array();
+        $students_by_grade = array();
+        foreach ($grades as $grade) {
+            $students_by_grade[] = array(
+                'grade'   => $grade,
+                'students' => $grade->students ?: array(),
+            );
+        }
+
+        $time_slots = \Model_Time_Slot::find('all', array('order_by' => array('id' => 'asc')));
+        $time_slots = $time_slots ?: array();
+
+        $lesson_date = $display_dt->format('Y-m-d');
+        $schedules = \Model_Lesson_Schedule::find('all', array(
+            'where'   => array(array('lesson_date', $lesson_date)),
+            'related' => array('teacher', 'student', 'subject'),
+            'order_by' => array('time_slot_id' => 'asc'),
+        ));
+        $schedules = $schedules ?: array();
+
+        $lesson_slots = array();
+        foreach ($time_slots as $ts) {
+            $lesson_slots[$ts->id] = array();
+        }
+        foreach ($schedules as $ls) {
+            $tid = (int) $ls->time_slot_id;
+            if ( ! isset($lesson_slots[$tid])) {
+                $lesson_slots[$tid] = array();
+            }
+            $teacher_name = ($ls->teacher) ? ($ls->teacher->last_name . ' ' . $ls->teacher->first_name) : '';
+            $student_name = ($ls->student) ? ($ls->student->last_name . ' ' . $ls->student->first_name) : '';
+            $subject_name = ($ls->subject) ? $ls->subject->subject_name : '';
+            $lesson_slots[$tid][] = array(
+                'id'      => (int) $ls->id,
+                'teacher' => $teacher_name,
+                'student' => $student_name,
+                'subject' => $subject_name,
+                'teacher_user_id' => (int) $ls->teacher_user_id,
+                'student_user_id' => (int) $ls->student_user_id,
+                'subject_id'      => (int) $ls->subject_id,
+            );
+        }
+
+        $weekday_ja = array('日', '月', '火', '水', '木', '金', '土');
+        $display_date = $display_dt->format('n/j') . '(' . $weekday_ja[(int) $display_dt->format('w')] . ')';
+
+        $cal_year  = (int) $display_dt->format('Y');
+        $cal_month = (int) $display_dt->format('n');
+        $calendar_month = $cal_month . '月';
+        $calendar_year  = $cal_year;
+
+        $first = new \DateTime($cal_year . '-' . $cal_month . '-01');
+        $last  = clone $first;
+        $last->modify('last day of this month');
+        $last_day = (int) $last->format('j');
+        $start_w = (int) $first->format('w');
+
+        $calendar_weeks = array();
+        $week = array();
+        for ($i = 0; $i < $start_w; $i++) {
+            $week[] = '';
+        }
+        for ($d = 1; $d <= $last_day; $d++) {
+            $week[] = (string) $d;
+            if (count($week) === 7) {
+                $calendar_weeks[] = $week;
+                $week = array();
+            }
+        }
+        if (count($week) > 0) {
+            while (count($week) < 7) {
+                $week[] = '';
+            }
+            $calendar_weeks[] = $week;
+        }
+
+        $first_str = $first->format('Y-m-d');
+        $last_str  = $last->format('Y-m-d');
+        $month_schedules = \Model_Lesson_Schedule::find('all', array(
+            'where' => array(
+                array('lesson_date', '>=', $first_str),
+                array('lesson_date', '<=', $last_str),
+            ),
+            'order_by' => array('lesson_date' => 'asc', 'time_slot_id' => 'asc'),
+        ));
+        $month_schedules = $month_schedules ?: array();
+
+        $slot_labels = array();
+        foreach ($time_slots as $ts) {
+            $slot_labels[(int) $ts->id] = mb_substr($ts->slot_name, 0, 1) ?: (string) $ts->id;
+        }
+        $monthly_lessons = array();
+        foreach ($month_schedules as $ls) {
+            $date = $ls->lesson_date;
+            $tid = (int) $ls->time_slot_id;
+            if ( ! isset($monthly_lessons[$date])) {
+                $monthly_lessons[$date] = array();
+            }
+            $monthly_lessons[$date][$tid] = isset($slot_labels[$tid]) ? $slot_labels[$tid] : (string) $tid;
+        }
+
+        $selected_day = (int) $display_dt->format('j');
+
+        $cal_dt = new \DateTime($cal_year . '-' . $cal_month . '-01');
+        $prev_dt = clone $cal_dt;
+        $prev_dt->modify('first day of previous month');
+        $next_dt = clone $cal_dt;
+        $next_dt->modify('first day of next month');
+        $prev_url = \Uri::create('admin/schedule', array(), array(
+            'year'  => $prev_dt->format('Y'),
+            'month' => $prev_dt->format('n'),
+        ));
+        $next_url = \Uri::create('admin/schedule', array(), array(
+            'year'  => $next_dt->format('Y'),
+            'month' => $next_dt->format('n'),
+        ));
+
+        $subjects = \Model_Subject::find('all', array('order_by' => array('id' => 'asc')));
+        $subjects = $subjects ?: array();
+
+        $students_flat = array();
+        foreach ($grades as $grade) {
+            if (empty($grade->students)) continue;
+            foreach ($grade->students as $st) {
+                if ($st->user) {
+                    $students_flat[] = array(
+                        'id'   => (int) $st->user_id,
+                        'name' => $st->user->last_name . ' ' . $st->user->first_name,
+                    );
+                }
+            }
+        }
+
+        $this->template->content = View::forge('admin/schedule/home', array(
+            'teachers'          => $teachers,
+            'students_by_grade' => $students_by_grade,
+            'display_date'      => $display_date,
+            'time_slots'        => $time_slots,
+            'lesson_slots'      => $lesson_slots,
+            'calendar_month'    => $calendar_month,
+            'calendar_year'     => $calendar_year,
+            'calendar_weeks'    => $calendar_weeks,
+            'selected_day'      => $selected_day,
+            'calendar_month_num'=> $cal_month,
+            'calendar_year_num' => $cal_year,
+            'prev_url'            => $prev_url,
+            'next_url'            => $next_url,
+            'schedule_lesson_date' => $lesson_date,
+            'subjects'            => $subjects,
+            'students_flat'       => $students_flat,
+            'monthly_lessons'     => $monthly_lessons,
+        ));
+    }
+
+    /**
+     * スケジュール保存（新規 or 更新）。POST: lesson_schedule_id, lesson_date, time_slot_id, teacher_user_id, student_user_id, subject_id
+     */
+    public function action_schedule_save()
+    {
+        if (\Input::method() !== 'POST') {
+            \Response::redirect('admin/schedule');
+            return;
+        }
+
+        $id = (int) \Input::post('lesson_schedule_id', 0);
+        $lesson_date = trim((string) \Input::post('lesson_date', ''));
+        $time_slot_id = (int) \Input::post('time_slot_id', 0);
+        $teacher_user_id = (int) \Input::post('teacher_user_id', 0);
+        $student_user_id = (int) \Input::post('student_user_id', 0);
+        $subject_id = (int) \Input::post('subject_id', 0);
+
+        $errors = array();
+        if ($lesson_date === '') $errors[] = '日付を指定してください。';
+        if ($time_slot_id <= 0) $errors[] = '時間枠を指定してください。';
+        if ($teacher_user_id <= 0) $errors[] = '講師を選択してください。';
+        if ($student_user_id <= 0) $errors[] = '生徒を選択してください。';
+        if ($subject_id <= 0) $errors[] = '科目を選択してください。';
+
+        if ( ! empty($errors)) {
+            \Session::set_flash('error', implode(' ', $errors));
+            \Response::redirect(\Uri::create('admin/schedule', array(), \Input::get()));
+            return;
+        }
+
+        try {
+            if ($id > 0) {
+                $schedule = \Model_Lesson_Schedule::find($id);
+                if ( ! $schedule) {
+                    \Session::set_flash('error', '指定された授業が見つかりません。');
+                    \Response::redirect('admin/schedule');
+                    return;
+                }
+                $schedule->lesson_date = $lesson_date;
+                $schedule->time_slot_id = $time_slot_id;
+                $schedule->teacher_user_id = $teacher_user_id;
+                $schedule->student_user_id = $student_user_id;
+                $schedule->subject_id = $subject_id;
+                $schedule->save();
+            } else {
+                \Model_Lesson_Schedule::forge(array(
+                    'lesson_date'      => $lesson_date,
+                    'time_slot_id'     => $time_slot_id,
+                    'teacher_user_id'  => $teacher_user_id,
+                    'student_user_id'  => $student_user_id,
+                    'subject_id'       => $subject_id,
+                ))->save();
+            }
+            \Session::set_flash('success', '保存しました。');
+        } catch (\Exception $e) {
+            \Session::set_flash('error', '保存に失敗しました。');
+        }
+
+        $redirect_params = array();
+        $ry = \Input::post('redirect_year', \Input::get('year'));
+        $rm = \Input::post('redirect_month', \Input::get('month'));
+        $rd = trim((string) \Input::post('redirect_date', ''));
+        if ($ry) $redirect_params['year'] = $ry;
+        if ($rm) $redirect_params['month'] = $rm;
+        if ($rd !== '') $redirect_params['date'] = $rd;
+        \Response::redirect(\Uri::create('admin/schedule', array(), $redirect_params));
+    }
+
+    /**
+     * スケジュール削除。POST: lesson_schedule_id
+     */
+    public function action_schedule_delete()
+    {
+        if (\Input::method() !== 'POST') {
+            \Response::redirect('admin/schedule');
+            return;
+        }
+
+        $id = (int) \Input::post('lesson_schedule_id', 0);
+        if ($id <= 0) {
+            \Session::set_flash('error', '不正なリクエストです。');
+            \Response::redirect('admin/schedule');
+            return;
+        }
+
+        $schedule = \Model_Lesson_Schedule::find($id);
+        if ($schedule) {
+            try {
+                $schedule->delete();
+                \Session::set_flash('success', '削除しました。');
+            } catch (\Exception $e) {
+                \Session::set_flash('error', '削除に失敗しました。');
+            }
+        }
+
+        $redirect_params = array();
+        $ry = \Input::post('redirect_year', \Input::get('year'));
+        $rm = \Input::post('redirect_month', \Input::get('month'));
+        $rd = trim((string) \Input::post('redirect_date', ''));
+        if ($ry) $redirect_params['year'] = $ry;
+        if ($rm) $redirect_params['month'] = $rm;
+        if ($rd !== '') $redirect_params['date'] = $rd;
+        \Response::redirect(\Uri::create('admin/schedule', array(), $redirect_params));
+    }
+
+    /**
      * 講師・生徒 追加画面
      */
     public function action_create()
