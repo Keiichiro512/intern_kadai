@@ -84,6 +84,16 @@ class Controller_Auth extends Controller_Template
     }
 
     /**
+     * 権限不足時に表示するページ。
+     */
+    public function action_access_denied()
+    {
+        $this->template->title       = 'アクセス権限がありません';
+        $this->template->style_sheet = 'auth.css';
+        $this->template->content     = View::forge('auth/access_denied');
+    }
+
+    /**
      * 入力パスワードとDBのハッシュを照合する。
      * DBには password_hash($raw, PASSWORD_DEFAULT) で保存された値が入っている前提。
      * 必ず password_verify（平文・ハッシュのペア）で検証し、他方式は使わない。

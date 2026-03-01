@@ -34,12 +34,14 @@
 
                         <div class="login-form__group">
                             <label class="login-form__label" for="password">パスワード</label>
+                            <p class="login-form__hint small text-muted mb-1">登録したパスワードを入力してください</p>
                             <input
                                 class="login-form__input"
                                 type="password"
                                 id="password"
                                 name="password"
                                 autocomplete="current-password"
+                                placeholder="登録したパスワードを入力"
                             >
                         </div>
 

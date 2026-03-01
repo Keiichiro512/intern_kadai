@@ -1,7 +1,7 @@
 <!-- ヘッダー -->
 <header class="admin-header">
     <span class="admin-header__greeting">塾長　お疲れ様です！</span>
-    <a href="<?php echo Uri::create('auth/logout'); ?>" class="admin-header__logout">ログアウト</a>
+    <?php echo \View::forge('partials/header_links')->render(); ?>
 </header>
 
 <!-- メインコンテンツ -->
@@ -17,7 +17,7 @@
                 講師・生徒を追加する
             </a>
 
-            <a href="<?php echo Uri::create('users/edit'); ?>" class="admin-menu__btn">
+            <a href="<?php echo Uri::create('admin/users/edit'); ?>" class="admin-menu__btn">
                 講師・生徒を編集する
             </a>
 

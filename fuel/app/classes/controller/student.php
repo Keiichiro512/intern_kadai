@@ -1,6 +1,6 @@
 <?php
 
-class Controller_Student extends Controller_Template
+class Controller_Student extends Controller_Base
 {
     public $template = 'template';
 

@@ -1,7 +1,7 @@
 <!-- ヘッダー -->
 <header class="admin-header">
     <span class="admin-header__greeting">塾長　お疲れ様です！</span>
-    <a href="<?php echo Uri::create('auth/logout'); ?>" class="admin-header__logout">ログアウト</a>
+    <?php echo \View::forge('partials/header_links')->render(); ?>
 </header>
 
 <!-- メインコンテンツ -->
@@ -71,6 +71,22 @@
                             name="first_name"
                             class="form-control"
                             value="<?php echo e($input['first_name']); ?>"
+                        >
+                    </div>
+                </div>
+
+                <!-- パスワード -->
+                <div class="row g-3 align-items-center mb-4">
+                    <div class="col-auto">
+                        <label for="password" class="col-form-label user-form-label">パスワード</label>
+                    </div>
+                    <div class="col">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="form-control"
+                            autocomplete="new-password"
                         >
                     </div>
                 </div>
@@ -173,22 +189,6 @@
                                 autocomplete="new-password"
                             >
                         </div>
-                    </div>
-                </div>
-
-                <!-- パスワード -->
-                <div class="row g-3 align-items-center mb-4">
-                    <div class="col-auto">
-                        <label for="password" class="col-form-label user-form-label">パスワード</label>
-                    </div>
-                    <div class="col">
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            class="form-control"
-                            autocomplete="new-password"
-                        >
                     </div>
                 </div>
 

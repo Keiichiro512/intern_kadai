@@ -105,9 +105,9 @@ return array(
 	 * Fuel::L_INFO
 	 * Fuel::L_ALL
 	 */
-	// 'log_threshold'    => Fuel::L_WARNING,
-	// 'log_path'         => APPPATH.'logs/',
-	// 'log_date_format'  => 'Y-m-d H:i:s',
+	'log_threshold'    => \Fuel::L_ALL,
+	'log_path'         => APPPATH.'logs/',
+	'log_date_format'  => 'Y-m-d H:i:s',
 
 	/**
 	 * Security settings
@@ -274,7 +274,7 @@ return array(
 		 */
 		'packages'  => array(
 			'orm',
-			'auth',
+			// 'auth' を削除: 古い Auth パッケージ（validate_password 等）は使用せず、Controller_Auth の password_verify ロジックのみを使用する
 		),
 
 		/**

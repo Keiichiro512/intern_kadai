@@ -29,19 +29,45 @@ body {
     letter-spacing: 0.04em;
 }
 
+.admin-header__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-header__link--home {
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    padding: 4px 14px;
+    border-radius: 4px;
+    background-color: transparent;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.admin-header__link--home:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: #ffffff;
+    color: #ffffff;
+    text-decoration: none;
+}
+
 .admin-header__logout {
     color: #ffffff;
     font-size: 0.9rem;
     font-weight: 500;
     text-decoration: none;
-    border: 1px solid rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     padding: 4px 14px;
     border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.2);
     transition: background-color 0.2s;
 }
 
 .admin-header__logout:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.35);
     color: #ffffff;
     text-decoration: none;
 }
@@ -131,6 +157,65 @@ body {
 .user-form-submit {
     min-width: 120px;
     font-weight: 600;
+}
+
+/* ---------- 講師・生徒一覧（編集する） ---------- */
+.admin-main--list {
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.admin-list-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 28px;
+}
+
+.admin-list-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px 32px;
+    margin-bottom: 32px;
+}
+
+.admin-list-grade-block {
+    min-width: 180px;
+}
+
+.admin-list-grade-heading {
+    background-color: #e8e8e8;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.admin-list-name-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-list-name-btn {
+    display: inline-block;
+    padding: 10px 16px;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    font-size: 0.95rem;
+    text-decoration: none;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.admin-list-name-btn:hover {
+    background-color: #f5f5f5;
+    border-color: #b0b0b0;
+    color: #1a1a1a;
+    text-decoration: none;
 }
 
 /* ---------- レスポンシブ調整 ---------- */
