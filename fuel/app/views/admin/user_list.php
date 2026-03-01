@@ -1,10 +1,4 @@
-<!-- ヘッダー -->
-<header class="admin-header">
-    <span class="admin-header__greeting">塾長　お疲れ様です！</span>
-    <?php echo \View::forge('partials/header_links')->render(); ?>
-</header>
-
-<!-- メインコンテンツ -->
+<!-- メインコンテンツ（ヘッダー・ログアウトは template.php で共通表示） -->
 <main class="admin-main admin-main--list">
     <div class="container">
         <h1 class="admin-list-title">生徒・講師を編集する</h1>

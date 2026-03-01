@@ -14,13 +14,14 @@ class Model_Lesson_Schedule extends \Orm\Model
     );
 
     protected static $_belongs_to = array(
-        'time_slot' => array(
-            'model_to' => 'Model_Time_Slot',
-            'key_from' => 'time_slot_id',
-            'key_to' => 'id',
-            'cascade_save' => false,
-            'cascade_delete' => false,
-        ),
+        // time_slot は Model_Time_Slot 読み込みエラー対策のため一時無効化（time_slot_id はプロパティで参照可）
+        // 'time_slot' => array(
+        //     'model_to' => 'Model_Time_Slot',
+        //     'key_from' => 'time_slot_id',
+        //     'key_to' => 'id',
+        //     'cascade_save' => false,
+        //     'cascade_delete' => false,
+        // ),
         'teacher' => array(
             'model_to' => 'Model_User',
             'key_from' => 'teacher_user_id',
