@@ -645,6 +645,122 @@ button.schedule-slot__cell {
     color: #1a1a1a;
 }
 
+.student-select-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.student-select-list__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #1a1a1a;
+    cursor: pointer;
+}
+
+.student-select-list__item input {
+    margin: 0;
+}
+
+/* 履修していない科目（薄く表示・チェック不可） */
+.subject-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* 生徒・科目ユニット */
+.schedule-units {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.schedule-unit {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background-color: #fafafa;
+}
+
+.schedule-unit__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-bottom: 8px;
+}
+
+.schedule-unit__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.schedule-unit__grade,
+.schedule-unit__student {
+    min-width: 100px;
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+}
+
+.schedule-unit__remove {
+    margin-left: auto;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: #c00;
+    background: transparent;
+    border: 1px solid #c00;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.schedule-unit__remove:hover {
+    background-color: rgba(204, 0, 0, 0.1);
+}
+
+.schedule-unit__subjects {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+}
+
+.schedule-unit__subject-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.schedule-unit__subject-item input {
+    margin: 0;
+}
+
+.schedule-unit-add-btn {
+    padding: 6px 14px;
+    font-size: 0.9rem;
+    color: #050CC7;
+    background: transparent;
+    border: 1px solid #050CC7;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.schedule-unit-add-btn:hover {
+    background-color: rgba(5, 12, 199, 0.08);
+}
+
 .schedule-modal__select {
     width: 100%;
     padding: 8px 12px;

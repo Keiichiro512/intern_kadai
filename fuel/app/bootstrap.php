@@ -7,6 +7,8 @@ require COREPATH.'bootstrap.php';
 	// Example: 'View' => APPPATH.'classes/view.php',
 ));
 
+\Autoloader::add_namespace('Model', APPPATH.'classes'.DS.'model'.DS);
+
 // Register the autoloader
 \Autoloader::register();
 

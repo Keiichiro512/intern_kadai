@@ -63,7 +63,7 @@ class Controller_Admin extends Controller_Base
         $lesson_date = $display_dt->format('Y-m-d');
         $schedules = \Model_Lesson_Schedule::find('all', array(
             'where'   => array(array('lesson_date', $lesson_date)),
-            'related' => array('teacher', 'student', 'subject'),
+            'related' => array('teacher', 'student', 'subject', 'schedule_students' => array('related' => array('student'))),
             'order_by' => array('time_slot_id' => 'asc'),
         ));
         $schedules = $schedules ?: array();
@@ -72,13 +72,47 @@ class Controller_Admin extends Controller_Base
         foreach ($time_slots as $ts) {
             $lesson_slots[$ts->id] = array();
         }
+        $has_lsss = \DBUtil::table_exists('lesson_schedule_student_subjects');
         foreach ($schedules as $ls) {
             $tid = (int) $ls->time_slot_id;
             if ( ! isset($lesson_slots[$tid])) {
                 $lesson_slots[$tid] = array();
             }
             $teacher_name = ($ls->teacher) ? ($ls->teacher->last_name . ' ' . $ls->teacher->first_name) : '';
-            $student_name = ($ls->student) ? ($ls->student->last_name . ' ' . $ls->student->first_name) : '';
+            $student_user_ids = array();
+            $student_names = array();
+            $units = array();
+            if ( ! empty($ls->schedule_students)) {
+                foreach ($ls->schedule_students as $ss) {
+                    $sid = (int) $ss->student_user_id;
+                    $student_user_ids[] = $sid;
+                    if ($ss->student) {
+                        $student_names[] = $ss->student->last_name . ' ' . $ss->student->first_name;
+                    }
+                    $stu = \Model_Student::find('first', array('where' => array('user_id' => $sid)));
+                    $grade_id = $stu ? (int) $stu->grade_id : 0;
+                    $subject_ids = array();
+                    if ($has_lsss) {
+                        $rows = \DB::select('subject_id')->from('lesson_schedule_student_subjects')
+                            ->where('lesson_schedule_id', $ls->id)->where('student_user_id', $sid)->execute()->as_array();
+                        foreach ($rows as $r) {
+                            $subject_ids[] = (int) $r['subject_id'];
+                        }
+                    }
+                    $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_ids' => $subject_ids);
+                }
+            } elseif ($ls->student_user_id) {
+                $sid = (int) $ls->student_user_id;
+                $student_user_ids[] = $sid;
+                if ($ls->student) {
+                    $student_names[] = $ls->student->last_name . ' ' . $ls->student->first_name;
+                }
+                $stu = \Model_Student::find('first', array('where' => array('user_id' => $sid)));
+                $grade_id = $stu ? (int) $stu->grade_id : 0;
+                $subject_ids = $ls->subject_id ? array((int) $ls->subject_id) : array();
+                $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_ids' => $subject_ids);
+            }
+            $student_name = implode('、', $student_names);
             $subject_name = ($ls->subject) ? $ls->subject->subject_name : '';
             $lesson_slots[$tid][] = array(
                 'id'      => (int) $ls->id,
@@ -87,6 +121,8 @@ class Controller_Admin extends Controller_Base
                 'subject' => $subject_name,
                 'teacher_user_id' => (int) $ls->teacher_user_id,
                 'student_user_id' => (int) $ls->student_user_id,
+                'student_user_ids' => $student_user_ids,
+                'units'   => $units,
                 'subject_id'      => (int) $ls->subject_id,
             );
         }
@@ -169,36 +205,63 @@ class Controller_Admin extends Controller_Base
         $subjects = $subjects ?: array();
 
         $students_flat = array();
+        $students_by_grade_json = array();
         foreach ($grades as $grade) {
-            if (empty($grade->students)) continue;
-            foreach ($grade->students as $st) {
-                if ($st->user) {
-                    $students_flat[] = array(
-                        'id'   => (int) $st->user_id,
-                        'name' => $st->user->last_name . ' ' . $st->user->first_name,
-                    );
+            $students_in_grade = array();
+            if ( ! empty($grade->students)) {
+                foreach ($grade->students as $st) {
+                    if ($st->user) {
+                        $students_flat[] = array(
+                            'id'   => (int) $st->user_id,
+                            'name' => $st->user->last_name . ' ' . $st->user->first_name,
+                        );
+                        $students_in_grade[] = array(
+                            'id'   => (int) $st->user_id,
+                            'name' => $st->user->last_name . ' ' . $st->user->first_name,
+                        );
+                    }
                 }
+            }
+            $students_by_grade_json[] = array(
+                'grade_id'   => (int) $grade->id,
+                'grade_name' => $grade->grade_name,
+                'students'   => $students_in_grade,
+            );
+        }
+
+        $student_enrollments = array();
+        $enrollments_raw = \Model_Student_Subject::find('all');
+        if ($enrollments_raw) {
+            foreach ($enrollments_raw as $es) {
+                $uid = (int) $es->student_user_id;
+                if ( ! isset($student_enrollments[$uid])) {
+                    $student_enrollments[$uid] = array();
+                }
+                $student_enrollments[$uid][] = (int) $es->subject_id;
             }
         }
 
         $this->template->content = View::forge('admin/schedule/home', array(
-            'teachers'          => $teachers,
-            'students_by_grade' => $students_by_grade,
-            'display_date'      => $display_date,
-            'time_slots'        => $time_slots,
-            'lesson_slots'      => $lesson_slots,
-            'calendar_month'    => $calendar_month,
-            'calendar_year'     => $calendar_year,
-            'calendar_weeks'    => $calendar_weeks,
-            'selected_day'      => $selected_day,
-            'calendar_month_num'=> $cal_month,
-            'calendar_year_num' => $cal_year,
-            'prev_url'            => $prev_url,
-            'next_url'            => $next_url,
-            'schedule_lesson_date' => $lesson_date,
-            'subjects'            => $subjects,
-            'students_flat'       => $students_flat,
-            'monthly_lessons'     => $monthly_lessons,
+            'teachers'              => $teachers,
+            'grades'                => $grades,
+            'students_by_grade'     => $students_by_grade,
+            'students_by_grade_json' => $students_by_grade_json,
+            'student_enrollments'   => $student_enrollments,
+            'display_date'          => $display_date,
+            'time_slots'            => $time_slots,
+            'lesson_slots'          => $lesson_slots,
+            'calendar_month'        => $calendar_month,
+            'calendar_year'         => $calendar_year,
+            'calendar_weeks'        => $calendar_weeks,
+            'selected_day'          => $selected_day,
+            'calendar_month_num'    => $cal_month,
+            'calendar_year_num'     => $cal_year,
+            'prev_url'              => $prev_url,
+            'next_url'              => $next_url,
+            'schedule_lesson_date'  => $lesson_date,
+            'subjects'              => $subjects,
+            'students_flat'         => $students_flat,
+            'monthly_lessons'       => $monthly_lessons,
         ));
     }
 
@@ -216,21 +279,39 @@ class Controller_Admin extends Controller_Base
         $lesson_date = trim((string) \Input::post('lesson_date', ''));
         $time_slot_id = (int) \Input::post('time_slot_id', 0);
         $teacher_user_id = (int) \Input::post('teacher_user_id', 0);
-        $student_user_id = (int) \Input::post('student_user_id', 0);
-        $subject_id = (int) \Input::post('subject_id', 0);
+        $student_units = \Input::post('student_units', array());
+        if ( ! is_array($student_units)) {
+            $student_units = array();
+        }
 
         $errors = array();
         if ($lesson_date === '') $errors[] = '日付を指定してください。';
         if ($time_slot_id <= 0) $errors[] = '時間枠を指定してください。';
         if ($teacher_user_id <= 0) $errors[] = '講師を選択してください。';
-        if ($student_user_id <= 0) $errors[] = '生徒を選択してください。';
-        if ($subject_id <= 0) $errors[] = '科目を選択してください。';
+
+        $units_valid = array();
+        foreach ($student_units as $u) {
+            $sid = isset($u['student_user_id']) ? (int) $u['student_user_id'] : 0;
+            if ($sid <= 0) continue;
+            $subject_ids = isset($u['subject_ids']) && is_array($u['subject_ids'])
+                ? array_filter(array_map('intval', $u['subject_ids'])) : array();
+            if (empty($subject_ids)) continue;
+            $units_valid[] = array(
+                'student_user_id' => $sid,
+                'subject_ids'     => $subject_ids,
+            );
+        }
+        if (empty($units_valid)) {
+            $errors[] = '生徒を1人以上選択し、各生徒で1科目以上選択してください。';
+        }
 
         if ( ! empty($errors)) {
             \Session::set_flash('error', implode(' ', $errors));
             \Response::redirect(\Uri::create('admin/schedule', array(), \Input::get()));
             return;
         }
+
+        $first_subject_id = ! empty($units_valid[0]['subject_ids']) ? $units_valid[0]['subject_ids'][0] : null;
 
         try {
             if ($id > 0) {
@@ -243,17 +324,37 @@ class Controller_Admin extends Controller_Base
                 $schedule->lesson_date = $lesson_date;
                 $schedule->time_slot_id = $time_slot_id;
                 $schedule->teacher_user_id = $teacher_user_id;
-                $schedule->student_user_id = $student_user_id;
-                $schedule->subject_id = $subject_id;
+                $schedule->student_user_id = $units_valid[0]['student_user_id'];
+                $schedule->subject_id = $first_subject_id ?: $schedule->subject_id;
                 $schedule->save();
             } else {
-                \Model_Lesson_Schedule::forge(array(
+                $schedule = \Model_Lesson_Schedule::forge(array(
                     'lesson_date'      => $lesson_date,
                     'time_slot_id'     => $time_slot_id,
                     'teacher_user_id'  => $teacher_user_id,
-                    'student_user_id'  => $student_user_id,
-                    'subject_id'       => $subject_id,
-                ))->save();
+                    'student_user_id'  => $units_valid[0]['student_user_id'],
+                    'subject_id'       => $first_subject_id,
+                ));
+                $schedule->save();
+            }
+            \DB::delete('lesson_schedule_students')->where('lesson_schedule_id', $schedule->id)->execute();
+            if (\DBUtil::table_exists('lesson_schedule_student_subjects')) {
+                \DB::delete('lesson_schedule_student_subjects')->where('lesson_schedule_id', $schedule->id)->execute();
+            }
+            foreach ($units_valid as $u) {
+                \DB::insert('lesson_schedule_students')->set(array(
+                    'lesson_schedule_id' => $schedule->id,
+                    'student_user_id'    => $u['student_user_id'],
+                ))->execute();
+                foreach ($u['subject_ids'] as $subj_id) {
+                    if (\DBUtil::table_exists('lesson_schedule_student_subjects')) {
+                        \DB::insert('lesson_schedule_student_subjects')->set(array(
+                            'lesson_schedule_id' => $schedule->id,
+                            'student_user_id'    => $u['student_user_id'],
+                            'subject_id'         => $subj_id,
+                        ))->execute();
+                    }
+                }
             }
             \Session::set_flash('success', '保存しました。');
         } catch (\Exception $e) {

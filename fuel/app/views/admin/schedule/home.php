@@ -23,6 +23,9 @@ $next_url    = isset($next_url) ? $next_url : Uri::create('admin/schedule');
 $schedule_lesson_date = isset($schedule_lesson_date) ? $schedule_lesson_date : '';
 $subjects    = isset($subjects) ? $subjects : array();
 $students_flat = isset($students_flat) ? $students_flat : array();
+$grades      = isset($grades) ? $grades : array();
+$students_by_grade_json = isset($students_by_grade_json) ? $students_by_grade_json : array();
+$student_enrollments = isset($student_enrollments) ? $student_enrollments : array();
 $monthly_lessons = isset($monthly_lessons) ? $monthly_lessons : array();
 $save_url    = Uri::create('admin/schedule/save');
 $delete_url  = Uri::create('admin/schedule/delete');
@@ -80,8 +83,7 @@ $delete_url  = Uri::create('admin/schedule/delete');
                                         data-time-slot-id="<?php echo e($slot->id); ?>"
                                         data-lesson-schedule-id="<?php echo e(isset($lesson['id']) ? $lesson['id'] : ''); ?>"
                                         data-teacher-user-id="<?php echo e(isset($lesson['teacher_user_id']) ? $lesson['teacher_user_id'] : ''); ?>"
-                                        data-student-user-id="<?php echo e(isset($lesson['student_user_id']) ? $lesson['student_user_id'] : ''); ?>"
-                                        data-subject-id="<?php echo e(isset($lesson['subject_id']) ? $lesson['subject_id'] : ''); ?>">
+                                        data-units="<?php echo e(json_encode(isset($lesson['units']) ? $lesson['units'] : array())); ?>">
                                         <span class="schedule-slot__teacher"><?php echo e($lesson['teacher']); ?></span>
                                         <span class="schedule-slot__student"><?php echo e($lesson['student']); ?></span>
                                         <span class="schedule-slot__subject"><?php echo e($lesson['subject']); ?></span>
@@ -91,7 +93,9 @@ $delete_url  = Uri::create('admin/schedule/delete');
                                 <button type="button" class="schedule-slot__cell schedule-slot__cell--empty schedule-slot__cell--clickable"
                                     data-date="<?php echo e($schedule_lesson_date); ?>"
                                     data-time-slot-id="<?php echo e($slot->id); ?>"
-                                    data-lesson-schedule-id="">（空き）</button>
+                                    data-lesson-schedule-id=""
+                                    data-teacher-user-id=""
+                                    data-units="[]">（空き）</button>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -190,22 +194,9 @@ $delete_url  = Uri::create('admin/schedule/delete');
                 </select>
             </div>
             <div class="schedule-modal__field">
-                <label for="form-student-user-id" class="schedule-modal__label">生徒</label>
-                <select name="student_user_id" id="form-student-user-id" class="schedule-modal__select" required>
-                    <option value="">選択してください</option>
-                    <?php foreach ($students_flat as $st): ?>
-                        <option value="<?php echo (int) $st['id']; ?>"><?php echo e($st['name']); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="schedule-modal__field">
-                <label for="form-subject-id" class="schedule-modal__label">科目</label>
-                <select name="subject_id" id="form-subject-id" class="schedule-modal__select" required>
-                    <option value="">選択してください</option>
-                    <?php foreach ($subjects as $subj): ?>
-                        <option value="<?php echo (int) $subj->id; ?>"><?php echo e($subj->subject_name); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <span class="schedule-modal__label">生徒・科目（学年→生徒→科目を選択）</span>
+                <div id="schedule-units-container" class="schedule-units"></div>
+                <button type="button" id="schedule-unit-add" class="schedule-unit-add-btn">生徒を追加</button>
             </div>
 
         <?php echo Form::close(); ?>
@@ -229,49 +220,202 @@ $delete_url  = Uri::create('admin/schedule/delete');
     </div>
 </div>
 
+<script type="text/template" id="schedule-unit-tpl">
+    <div class="schedule-unit" data-unit-index="">
+        <div class="schedule-unit__row">
+            <label class="schedule-unit__label">学年</label>
+            <select class="schedule-unit__grade">
+                <option value="">選択</option>
+            </select>
+            <label class="schedule-unit__label">生徒</label>
+            <select class="schedule-unit__student">
+                <option value="">選択</option>
+            </select>
+            <button type="button" class="schedule-unit__remove">削除</button>
+        </div>
+        <div class="schedule-unit__subjects">
+            <span class="schedule-unit__label">科目</span>
+        </div>
+    </div>
+</script>
+
 <script>
 (function() {
+    var GRADES = <?php echo json_encode($students_by_grade_json); ?>;
+    var SUBJECTS = <?php echo json_encode(array_map(function($s) { return array('id' => $s->id, 'name' => $s->subject_name); }, $subjects)); ?>;
+    var ENROLLMENTS = <?php echo json_encode($student_enrollments); ?>;
+
+    // 安全な初期化（JSエラー防止）
+    if (!Array.isArray(GRADES)) GRADES = [];
+    if (!Array.isArray(SUBJECTS)) SUBJECTS = [];
+    if (!ENROLLMENTS || typeof ENROLLMENTS !== 'object') ENROLLMENTS = {};
+
     var modal = document.getElementById('schedule-modal');
     var overlay = modal && modal.querySelector('.schedule-modal__overlay');
     var formId = document.getElementById('form-lesson-schedule-id');
     var formDate = document.getElementById('form-lesson-date');
     var formTimeSlotId = document.getElementById('form-time-slot-id');
     var formTeacher = document.getElementById('form-teacher-user-id');
-    var formStudent = document.getElementById('form-student-user-id');
-    var formSubject = document.getElementById('form-subject-id');
     var deleteWrap = document.getElementById('schedule-delete-wrap');
     var formDeleteId = document.getElementById('form-delete-lesson-schedule-id');
+    var unitsContainer = document.getElementById('schedule-units-container');
+    var addBtn = document.getElementById('schedule-unit-add');
+    var unitTpl = document.getElementById('schedule-unit-tpl');
+    var unitIndex = 0;
+
+    if (!modal || !unitsContainer || !addBtn || !unitTpl) {
+        return;
+    }
 
     function openModal() {
-        if (modal) modal.classList.add('is-open');
-        if (modal) modal.setAttribute('aria-hidden', 'false');
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
     }
     function closeModal() {
-        if (modal) modal.classList.remove('is-open');
-        if (modal) modal.setAttribute('aria-hidden', 'true');
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
     }
 
-    document.querySelectorAll('.schedule-slot__cell--clickable').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var date = this.getAttribute('data-date');
-            var timeSlotId = this.getAttribute('data-time-slot-id');
-            var lessonId = this.getAttribute('data-lesson-schedule-id') || '';
-            var teacherId = this.getAttribute('data-teacher-user-id') || '';
-            var studentId = this.getAttribute('data-student-user-id') || '';
-            var subjectId = this.getAttribute('data-subject-id') || '';
+    function getStudentsByGradeId(gradeId) {
+        var g = GRADES.filter(function(x) { return x.grade_id == gradeId; });
+        return g.length ? g[0].students : [];
+    }
 
-            if (formId) formId.value = lessonId;
-            if (formDate) formDate.value = date;
-            if (formTimeSlotId) formTimeSlotId.value = timeSlotId || '';
-            if (formTeacher) formTeacher.value = teacherId;
-            if (formStudent) formStudent.value = studentId;
-            if (formSubject) formSubject.value = subjectId;
-            if (formDeleteId) formDeleteId.value = lessonId;
+    function getEnrollment(studentUserId) {
+        return ENROLLMENTS[String(studentUserId)] || [];
+    }
 
-            if (deleteWrap) deleteWrap.style.display = lessonId ? 'inline' : 'none';
-
-            openModal();
+    function renderSubjectCheckboxes(unitEl, studentUserId) {
+        var wrap = unitEl.querySelector('.schedule-unit__subjects');
+        if (!wrap) return;
+        var idx = unitEl.getAttribute('data-unit-index');
+        var enrolled = getEnrollment(studentUserId);
+        wrap.innerHTML = '<span class="schedule-unit__label">科目</span>';
+        SUBJECTS.forEach(function(subj) {
+            var enabled = enrolled.indexOf(subj.id) !== -1;
+            var label = document.createElement('label');
+            label.className = 'schedule-unit__subject-item' + (enabled ? '' : ' subject-disabled');
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.name = 'student_units[' + idx + '][subject_ids][]';
+            cb.value = subj.id;
+            cb.disabled = !enabled;
+            if (!enabled) cb.setAttribute('aria-disabled', 'true');
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + subj.name));
+            wrap.appendChild(label);
         });
+    }
+
+    function updateStudentSelect(unitEl) {
+        var gradeSelect = unitEl.querySelector('.schedule-unit__grade');
+        var studentSelect = unitEl.querySelector('.schedule-unit__student');
+        var gradeId = gradeSelect ? gradeSelect.value : '';
+        var students = getStudentsByGradeId(gradeId);
+        if (!studentSelect) return;
+        var cur = studentSelect.value;
+        studentSelect.innerHTML = '<option value="">選択</option>';
+        students.forEach(function(s) {
+            var opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            if (String(s.id) === String(cur)) opt.selected = true;
+            studentSelect.appendChild(opt);
+        });
+        if (!cur) renderSubjectCheckboxes(unitEl, '');
+        else renderSubjectCheckboxes(unitEl, cur);
+    }
+
+    function addUnit(data) {
+        data = data || { grade_id: '', student_user_id: '', subject_ids: [] };
+        var idx = unitIndex++;
+        var html = unitTpl.innerHTML.replace('data-unit-index=""', 'data-unit-index="' + idx + '"');
+        var wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        var unitEl = wrap.firstElementChild;
+
+        var gradeSelect = unitEl.querySelector('.schedule-unit__grade');
+        gradeSelect.name = 'student_units[' + idx + '][grade_id]';
+        var studentSelect = unitEl.querySelector('.schedule-unit__student');
+        studentSelect.name = 'student_units[' + idx + '][student_user_id]';
+        GRADES.forEach(function(g) {
+            var opt = document.createElement('option');
+            opt.value = g.grade_id;
+            opt.textContent = g.grade_name;
+            if (String(g.grade_id) === String(data.grade_id)) opt.selected = true;
+            gradeSelect.appendChild(opt);
+        });
+
+        gradeSelect.addEventListener('change', function() {
+            unitEl.querySelector('.schedule-unit__student').value = '';
+            updateStudentSelect(unitEl);
+        });
+
+        unitsContainer.appendChild(unitEl);
+        updateStudentSelect(unitEl);
+
+        studentSelect.addEventListener('change', function() {
+            renderSubjectCheckboxes(unitEl, this.value);
+        });
+
+        if (data.student_user_id) {
+            studentSelect.value = data.student_user_id;
+            updateStudentSelect(unitEl);
+            renderSubjectCheckboxes(unitEl, data.student_user_id);
+            var subsWrap = unitEl.querySelector('.schedule-unit__subjects');
+            if (subsWrap && data.subject_ids && data.subject_ids.length) {
+                setTimeout(function() {
+                    subsWrap.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                        if (data.subject_ids.indexOf(parseInt(cb.value, 10)) !== -1) cb.checked = true;
+                    });
+                }, 0);
+            }
+        }
+
+        unitEl.querySelector('.schedule-unit__remove').addEventListener('click', function() {
+            unitEl.remove();
+        });
+    }
+
+    addBtn.addEventListener('click', function() {
+        addUnit({});
+    });
+
+    // イベントデリゲートで全てのセルを対象にする
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.schedule-slot__cell--clickable');
+        if (!btn) return;
+
+        var date = btn.getAttribute('data-date');
+        var timeSlotId = btn.getAttribute('data-time-slot-id');
+        var lessonId = btn.getAttribute('data-lesson-schedule-id') || '';
+        var teacherId = btn.getAttribute('data-teacher-user-id') || '';
+        var unitsJson = btn.getAttribute('data-units') || '[]';
+        var units = [];
+        try {
+            units = JSON.parse(unitsJson);
+            if (!Array.isArray(units)) units = [];
+        } catch (e) {
+            units = [];
+        }
+
+        if (formId) formId.value = lessonId;
+        if (formDate) formDate.value = date || '';
+        if (formTimeSlotId) formTimeSlotId.value = timeSlotId || '';
+        if (formTeacher) formTeacher.value = teacherId || '';
+        if (formDeleteId) formDeleteId.value = lessonId;
+
+        unitsContainer.innerHTML = '';
+        unitIndex = 0;
+        if (units.length > 0) {
+            units.forEach(function(u) { addUnit(u); });
+        } else {
+            addUnit({});
+        }
+
+        if (deleteWrap) deleteWrap.style.display = lessonId ? 'inline' : 'none';
+
+        openModal();
     });
 
     if (overlay) overlay.addEventListener('click', closeModal);

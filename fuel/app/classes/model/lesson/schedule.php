@@ -45,6 +45,16 @@ class Model_Lesson_Schedule extends \Orm\Model
         ),
     );
 
+    protected static $_has_many = array(
+        'schedule_students' => array(
+            'model_to' => 'Model\\Lesson_Schedule_Student',
+            'key_from' => 'id',
+            'key_to' => 'lesson_schedule_id',
+            'cascade_save' => false,
+            'cascade_delete' => false,
+        ),
+    );
+
     protected static $_has_one = array(
         'report' => array(
             'model_to' => 'Model_Report',
