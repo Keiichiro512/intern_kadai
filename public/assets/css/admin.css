@@ -671,6 +671,7 @@ button.schedule-slot__cell {
 .subject-disabled {
     opacity: 0.4;
     pointer-events: none;
+    cursor: not-allowed;
 }
 
 /* 生徒・科目ユニット */

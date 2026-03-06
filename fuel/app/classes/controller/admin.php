@@ -68,6 +68,13 @@ class Controller_Admin extends Controller_Base
         ));
         $schedules = $schedules ?: array();
 
+        $subjects_for_names = \Model_Subject::find('all', array('order_by' => array('id' => 'asc')));
+        $subjects_for_names = $subjects_for_names ?: array();
+        $subject_names_by_id = array();
+        foreach ($subjects_for_names as $s) {
+            $subject_names_by_id[(int) $s->id] = $s->subject_name;
+        }
+
         $lesson_slots = array();
         foreach ($time_slots as $ts) {
             $lesson_slots[$ts->id] = array();
@@ -82,43 +89,44 @@ class Controller_Admin extends Controller_Base
             $student_user_ids = array();
             $student_names = array();
             $units = array();
+            $display_parts = array();
             if ( ! empty($ls->schedule_students)) {
                 foreach ($ls->schedule_students as $ss) {
                     $sid = (int) $ss->student_user_id;
                     $student_user_ids[] = $sid;
-                    if ($ss->student) {
-                        $student_names[] = $ss->student->last_name . ' ' . $ss->student->first_name;
-                    }
+                    $student_display_name = $ss->student ? ($ss->student->last_name . ' ' . $ss->student->first_name) : '';
+                    $student_names[] = $student_display_name;
                     $stu = \Model_Student::find('first', array('where' => array('user_id' => $sid)));
                     $grade_id = $stu ? (int) $stu->grade_id : 0;
-                    $subject_ids = array();
+                    $subject_id = 0;
                     if ($has_lsss) {
-                        $rows = \DB::select('subject_id')->from('lesson_schedule_student_subjects')
-                            ->where('lesson_schedule_id', $ls->id)->where('student_user_id', $sid)->execute()->as_array();
-                        foreach ($rows as $r) {
-                            $subject_ids[] = (int) $r['subject_id'];
-                        }
+                        $row = \DB::select('subject_id')->from('lesson_schedule_student_subjects')
+                            ->where('lesson_schedule_id', $ls->id)->where('student_user_id', $sid)->limit(1)->execute()->current();
+                        $subject_id = $row ? (int) $row['subject_id'] : 0;
                     }
-                    $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_ids' => $subject_ids);
+                    $subject_display_name = isset($subject_names_by_id[$subject_id]) ? $subject_names_by_id[$subject_id] : '';
+                    $display_parts[] = $student_display_name . '(' . $subject_display_name . ')';
+                    $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_id' => $subject_id);
                 }
             } elseif ($ls->student_user_id) {
                 $sid = (int) $ls->student_user_id;
                 $student_user_ids[] = $sid;
-                if ($ls->student) {
-                    $student_names[] = $ls->student->last_name . ' ' . $ls->student->first_name;
-                }
+                $student_display_name = $ls->student ? ($ls->student->last_name . ' ' . $ls->student->first_name) : '';
+                $student_names[] = $student_display_name;
                 $stu = \Model_Student::find('first', array('where' => array('user_id' => $sid)));
                 $grade_id = $stu ? (int) $stu->grade_id : 0;
-                $subject_ids = $ls->subject_id ? array((int) $ls->subject_id) : array();
-                $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_ids' => $subject_ids);
+                $subject_id = $ls->subject_id ? (int) $ls->subject_id : 0;
+                $subject_display_name = isset($subject_names_by_id[$subject_id]) ? $subject_names_by_id[$subject_id] : '';
+                $display_parts[] = $student_display_name . '(' . $subject_display_name . ')';
+                $units[] = array('grade_id' => $grade_id, 'student_user_id' => $sid, 'subject_id' => $subject_id);
             }
             $student_name = implode('、', $student_names);
-            $subject_name = ($ls->subject) ? $ls->subject->subject_name : '';
+            $subject_display = implode('、', $display_parts);
             $lesson_slots[$tid][] = array(
                 'id'      => (int) $ls->id,
                 'teacher' => $teacher_name,
                 'student' => $student_name,
-                'subject' => $subject_name,
+                'subject' => $subject_display,
                 'teacher_user_id' => (int) $ls->teacher_user_id,
                 'student_user_id' => (int) $ls->student_user_id,
                 'student_user_ids' => $student_user_ids,
@@ -203,6 +211,13 @@ class Controller_Admin extends Controller_Base
 
         $subjects = \Model_Subject::find('all', array('order_by' => array('id' => 'asc')));
         $subjects = $subjects ?: array();
+        $subjects_for_js = array();
+        foreach ($subjects as $s) {
+            $subjects_for_js[] = array(
+                'id'   => (int) $s->id,
+                'name' => (string) $s->subject_name,
+            );
+        }
 
         $students_flat = array();
         $students_by_grade_json = array();
@@ -260,13 +275,17 @@ class Controller_Admin extends Controller_Base
             'next_url'              => $next_url,
             'schedule_lesson_date'  => $lesson_date,
             'subjects'              => $subjects,
+            'subjects_for_js'       => $subjects_for_js,
             'students_flat'         => $students_flat,
             'monthly_lessons'       => $monthly_lessons,
         ));
     }
 
     /**
-     * スケジュール保存（新規 or 更新）。POST: lesson_schedule_id, lesson_date, time_slot_id, teacher_user_id, student_user_id, subject_id
+     * スケジュール保存（新規 or 更新）。
+     * 生徒・科目のペアをラジオボタン形式で受け取り、トランザクション内で Delete & Insert により
+     * lesson_schedules / lesson_schedule_students / lesson_schedule_student_subjects を同期保存する。
+     * POST: lesson_schedule_id, lesson_date, time_slot_id, teacher_user_id, student_units[idx][student_user_id], student_units[idx][subject_id]
      */
     public function action_schedule_save()
     {
@@ -279,30 +298,43 @@ class Controller_Admin extends Controller_Base
         $lesson_date = trim((string) \Input::post('lesson_date', ''));
         $time_slot_id = (int) \Input::post('time_slot_id', 0);
         $teacher_user_id = (int) \Input::post('teacher_user_id', 0);
-        $student_units = \Input::post('student_units', array());
-        if ( ! is_array($student_units)) {
-            $student_units = array();
+        $student_units_raw = \Input::post('student_units');
+        if ( ! is_array($student_units_raw)) {
+            $student_units_raw = array();
         }
 
         $errors = array();
-        if ($lesson_date === '') $errors[] = '日付を指定してください。';
-        if ($time_slot_id <= 0) $errors[] = '時間枠を指定してください。';
-        if ($teacher_user_id <= 0) $errors[] = '講師を選択してください。';
+        if ($lesson_date === '') {
+            $errors[] = '日付を指定してください。';
+        }
+        if ($time_slot_id <= 0) {
+            $errors[] = '時間枠を指定してください。';
+        }
+        if ($teacher_user_id <= 0) {
+            $errors[] = '講師を選択してください。';
+        }
 
+        // 有効なユニットのみ抽出（生徒IDあり かつ 科目を1つ選択しているもの）
         $units_valid = array();
-        foreach ($student_units as $u) {
-            $sid = isset($u['student_user_id']) ? (int) $u['student_user_id'] : 0;
-            if ($sid <= 0) continue;
-            $subject_ids = isset($u['subject_ids']) && is_array($u['subject_ids'])
-                ? array_filter(array_map('intval', $u['subject_ids'])) : array();
-            if (empty($subject_ids)) continue;
+        foreach ($student_units_raw as $u) {
+            if ( ! is_array($u)) {
+                continue;
+            }
+            $student_user_id = isset($u['student_user_id']) ? (int) $u['student_user_id'] : 0;
+            if ($student_user_id <= 0) {
+                continue;
+            }
+            $subject_id = isset($u['subject_id']) ? (int) $u['subject_id'] : 0;
+            if ($subject_id <= 0) {
+                continue;
+            }
             $units_valid[] = array(
-                'student_user_id' => $sid,
-                'subject_ids'     => $subject_ids,
+                'student_user_id' => $student_user_id,
+                'subject_id'      => $subject_id,
             );
         }
         if (empty($units_valid)) {
-            $errors[] = '生徒を1人以上選択し、各生徒で1科目以上選択してください。';
+            $errors[] = '生徒と科目をそれぞれ1つ以上選択してください。';
         }
 
         if ( ! empty($errors)) {
@@ -311,23 +343,45 @@ class Controller_Admin extends Controller_Base
             return;
         }
 
-        $first_subject_id = ! empty($units_valid[0]['subject_ids']) ? $units_valid[0]['subject_ids'][0] : null;
+        // lesson_schedules.subject_id（NOT NULL）: 有効ユニットの先頭科目。取得できない場合は subjects の最小 ID でフォールバック
+        $first_subject_id = (int) $units_valid[0]['subject_id'];
+        if ($first_subject_id <= 0) {
+            $row = \DB::select(\DB::expr('MIN(id) as min_id'))->from('subjects')->execute()->current();
+            $first_subject_id = $row && isset($row['min_id']) && $row['min_id'] !== null
+                ? (int) $row['min_id']
+                : $first_subject_id;
+        }
+        if ($first_subject_id <= 0) {
+            $errors[] = '科目が登録されていません。先に科目を登録してください。';
+            \Session::set_flash('error', implode(' ', $errors));
+            \Response::redirect(\Uri::create('admin/schedule', array(), \Input::get()));
+            return;
+        }
 
         try {
+            \DB::start_transaction();
+
             if ($id > 0) {
+                // 更新: 1. 既存紐づけのクリーンアップ → 2. 基本情報更新
                 $schedule = \Model_Lesson_Schedule::find($id);
                 if ( ! $schedule) {
+                    \DB::rollback_transaction();
                     \Session::set_flash('error', '指定された授業が見つかりません。');
                     \Response::redirect('admin/schedule');
                     return;
+                }
+                \DB::delete('lesson_schedule_students')->where('lesson_schedule_id', '=', $id)->execute();
+                if (\DBUtil::table_exists('lesson_schedule_student_subjects')) {
+                    \DB::delete('lesson_schedule_student_subjects')->where('lesson_schedule_id', '=', $id)->execute();
                 }
                 $schedule->lesson_date = $lesson_date;
                 $schedule->time_slot_id = $time_slot_id;
                 $schedule->teacher_user_id = $teacher_user_id;
                 $schedule->student_user_id = $units_valid[0]['student_user_id'];
-                $schedule->subject_id = $first_subject_id ?: $schedule->subject_id;
+                $schedule->subject_id = $first_subject_id;
                 $schedule->save();
             } else {
+                // 新規: 先に lesson_schedules を 1 件作成して ID を確定
                 $schedule = \Model_Lesson_Schedule::forge(array(
                     'lesson_date'      => $lesson_date,
                     'time_slot_id'     => $time_slot_id,
@@ -337,27 +391,39 @@ class Controller_Admin extends Controller_Base
                 ));
                 $schedule->save();
             }
-            \DB::delete('lesson_schedule_students')->where('lesson_schedule_id', $schedule->id)->execute();
-            if (\DBUtil::table_exists('lesson_schedule_student_subjects')) {
-                \DB::delete('lesson_schedule_student_subjects')->where('lesson_schedule_id', $schedule->id)->execute();
-            }
-            foreach ($units_valid as $u) {
-                \DB::insert('lesson_schedule_students')->set(array(
-                    'lesson_schedule_id' => $schedule->id,
-                    'student_user_id'    => $u['student_user_id'],
-                ))->execute();
-                foreach ($u['subject_ids'] as $subj_id) {
-                    if (\DBUtil::table_exists('lesson_schedule_student_subjects')) {
-                        \DB::insert('lesson_schedule_student_subjects')->set(array(
-                            'lesson_schedule_id' => $schedule->id,
-                            'student_user_id'    => $u['student_user_id'],
-                            'subject_id'         => $subj_id,
-                        ))->execute();
-                    }
+
+            $schedule_id = $schedule->id;
+
+            // 3. 複数生徒・科目の保存（1生徒につき1科目を lesson_schedule_student_subjects に1行）
+            foreach ($units_valid as $unit) {
+                $student_user_id = $unit['student_user_id'];
+                $subject_id = (int) $unit['subject_id'];
+                $schedule_student = \Model\Lesson_Schedule_Student::forge(array(
+                    'lesson_schedule_id' => $schedule_id,
+                    'student_user_id'    => $student_user_id,
+                ));
+                $schedule_student->save();
+
+                if ($subject_id > 0 && \DBUtil::table_exists('lesson_schedule_student_subjects')) {
+                    \DB::insert('lesson_schedule_student_subjects')->set(array(
+                        'lesson_schedule_id' => $schedule_id,
+                        'student_user_id'    => $student_user_id,
+                        'subject_id'         => $subject_id,
+                    ))->execute();
                 }
             }
+
+            \DB::commit_transaction();
             \Session::set_flash('success', '保存しました。');
+        } catch (\Database_Exception $e) {
+            \DB::rollback_transaction();
+            \Log::error('schedule_save Database_Exception: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            \Session::set_flash('error', '保存に失敗しました。');
         } catch (\Exception $e) {
+            \DB::rollback_transaction();
+            \Log::error('schedule_save: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             \Session::set_flash('error', '保存に失敗しました。');
         }
 
