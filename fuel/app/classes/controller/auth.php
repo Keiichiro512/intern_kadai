@@ -84,6 +84,17 @@ class Controller_Auth extends Controller_Template
     }
 
     /**
+     * 404 Not Found ページ。
+     */
+    public function action_404()
+    {
+        $this->template->title       = 'ページが見つかりません';
+        $this->template->style_sheet = 'auth.css';
+        $this->template->content     = View::forge('auth/404');
+        return Response::forge($this->template, 404);
+    }
+
+    /**
      * 権限不足時に表示するページ。
      */
     public function action_access_denied()

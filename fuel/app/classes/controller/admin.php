@@ -333,6 +333,7 @@ class Controller_Admin extends Controller_Base
                 'subject_id'      => $subject_id,
             );
         }
+        
         if (empty($units_valid)) {
             $errors[] = '生徒と科目をそれぞれ1つ以上選択してください。';
         }

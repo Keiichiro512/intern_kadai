@@ -8,7 +8,7 @@
 return array(
     // デフォルトはログイン画面
     '_root_'       => 'auth/login',
-    '_404_'        => 'welcome/404',
+    '_404_'        => 'auth/404',
 
     // 認証（URI auth/login → auth/login = Controller_Auth::action_login）
     'auth/login'        => 'auth/login',
