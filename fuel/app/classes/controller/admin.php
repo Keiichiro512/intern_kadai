@@ -4,51 +4,119 @@ class Controller_Admin extends Controller_Base
 {
     public $template = 'template';
 
-    public function action_home()
-    {
+    public function action_home(){
+        // template.php で$title = '塾長ホーム' を設定する；タブのタイトルを設定する
         $this->template->title       = '塾長ホーム';
+        // template.php で$style_sheet = 'admin.css' を設定する；cssを読み込む
         $this->template->style_sheet = 'admin.css';
-
+        //View::forge('admin/home')：fuel/app/views/admin/home.php を読み込み、そのページの HTML（本文）を組み立てる。
+        // template.php で$content = View::forge('admin/home') を設定する；ホーム画面を表示する
         $this->template->content = View::forge('admin/home');
     }
 
-    /**
-     * スケジュール管理画面。講師・生徒・時間枠・指定日の授業・カレンダーを取得してViewに渡す。
-     */
-    public function action_schedule_home()
-    {
+    public function action_schedule_home(){
+        // --- 1. 画面の共通設定（template.php のタイトル・CSS） ---
         $this->template->title       = '授業スケジュール';
         $this->template->style_sheet = 'admin.css';
 
+        // --- 2. 「どの日のスケジュールを見るか」: GET の year/month と date、なければ今日 or 月初などで $display_dt を決める ---
+
+        // URL に year がなければ date('Y')（サーバー実行時の今年）を使う。
         $year  = (int) \Input::get('year', date('Y'));
+        // URL に month がなければ date('n')（サーバー実行時の今月）を使う。
         $month = (int) \Input::get('month', date('n'));
+        //$month を「1 以上 12 以下」にそろえる（はみ出した値を切り詰める）
         $month = max(1, min(12, $month));
+        //ブラウザの URL の ?date=2025-03-21 のような GET パラメータ date を文字列で取ります。
         $date_str = \Input::get('date');
+        
+        // 主に「月の移動」や「最初の日付の表示」「授業保存後の日付表示」で使われる。
         if ($date_str) {
+            // date_str があれば、date_str を Y-m-d 形式の日付に変換し、display_dt に格納する。（date あり・形式OK）
             $display_dt = \DateTime::createFromFormat('Y-m-d', $date_str);
             if ( ! $display_dt) {
+                // 変換に失敗した場合、「その年・その月の1日」 にフォールバックします（先に決めた $year / $month を使用）（date あり・形式NG）→省くと良くない
                 $display_dt = new \DateTime($year . '-' . $month . '-01');
             }
         } else {
+            //月移動の場合、移動先が今月であれば、今日の日付を使う。（date なし・今月）
             $today = new \DateTime();
             if ($year === (int) $today->format('Y') && $month === (int) $today->format('n')) {
                 $display_dt = clone $today;
             } else {
+                // そうでなければ、「その年・その月の1日」 にフォールバックします（先に決めた $year / $month を使用）。（date なし・今月以外）
                 $display_dt = new \DateTime($year . '-' . $month . '-01');
             }
         }
 
-        $teachers = \Model_User::find('all', array(
-            'where'    => array(array('role_id', 2)),
-            'order_by' => array('last_name' => 'asc', 'first_name' => 'asc'),
-        ));
-        $teachers = $teachers ?: array();
+        // --- 3. 左サイドバー用：講師一覧（role_id=2）・学年別生徒（students×users）・ビュー向け $students_by_grade ---
+        $teacher_result = \DB::select('id', 'last_name', 'first_name')
+            ->from('users')
+            ->where('role_id', 2)
+            ->order_by('last_name', 'asc')
+            ->order_by('first_name', 'asc')
+            ->execute();
+        $teachers = array();
+        foreach ($teacher_result as $tr) {
+            $teachers[] = (object) $tr;
+        }
+        // $teachersの中身の例
+        // $teachers = [
+        //     (object)[
+        //       'id' => 12,
+        //       'last_name' => '田中',
+        //       'first_name' => '太郎',
+        //     ],
+        //     (object)[
+        //       'id' => 25,
+        //       'last_name' => '山田',
+        //       'first_name' => '花子',
+        //     ],
+        //     (object)[
+        //       'id' => 31,
+        //       'last_name' => '鈴木',
+        //       'first_name' => '次郎',
+        //     ],
+        //   ];
 
-        $grades = \Model_Grade::find('all', array(
-            'order_by' => array('id' => 'asc'),
-            'related'  => array('students' => array('related' => array('user'))),
-        ));
-        $grades = $grades ?: array();
+        $student_rows = \DB::select('students.user_id', 'students.grade_id','users.last_name','users.first_name')
+            ->from('students')
+            ->join('users', 'INNER')
+            ->on('students.user_id', '=', 'users.id')
+            ->order_by('students.grade_id', 'asc') 
+            ->order_by('users.last_name', 'asc') 
+            ->order_by('users.first_name', 'asc') 
+            ->execute();
+            
+        $students_by_grade_id = array();
+        foreach ($student_rows as $sr) {
+            // その生徒が属する学年ID（例: 1年=1, 2年=2 など）を取り出します。
+            $gid = (int) $sr['grade_id'];
+            // その学年ID用の箱がまだ無ければ、新しく作ります。
+            if ( ! isset($students_by_grade_id[$gid])) {
+                // 「この学年の生徒リスト」を入れる空配列を用意します。
+                $students_by_grade_id[$gid] = array();
+            }
+            $stu = new \stdClass();
+            $stu->user_id = (int) $sr['user_id'];
+            $stu->user    = (object) array(
+                'last_name'  => (string) $sr['last_name'],
+                'first_name' => (string) $sr['first_name'],
+            );
+            $students_by_grade_id[$gid][] = $stu;
+        }
+
+        $grade_result = \DB::select('id', 'grade_name')
+            ->from('grades')
+            ->order_by('id', 'asc')
+            ->execute();
+        $grades = array();
+        foreach ($grade_result as $grow) {
+            $g = (object) $grow;
+            $gid = (int) $g->id;
+            $g->students = isset($students_by_grade_id[$gid]) ? $students_by_grade_id[$gid] : array();
+            $grades[] = $g;
+        }
         $students_by_grade = array();
         foreach ($grades as $grade) {
             $students_by_grade[] = array(
@@ -57,29 +125,156 @@ class Controller_Admin extends Controller_Base
             );
         }
 
-        $time_slots = \Model_Time_Slot::find('all', array('order_by' => array('id' => 'asc')));
-        $time_slots = $time_slots ?: array();
-
-        $lesson_date = $display_dt->format('Y-m-d');
-        $schedules = \Model_Lesson_Schedule::find('all', array(
-            'where'   => array(array('lesson_date', $lesson_date)),
-            'related' => array('teacher', 'student', 'subject', 'schedule_students' => array('related' => array('student'))),
-            'order_by' => array('time_slot_id' => 'asc'),
-        ));
-        $schedules = $schedules ?: array();
-
-        $subjects_for_names = \Model_Subject::find('all', array('order_by' => array('id' => 'asc')));
-        $subjects_for_names = $subjects_for_names ?: array();
-        $subject_names_by_id = array();
-        foreach ($subjects_for_names as $s) {
-            $subject_names_by_id[(int) $s->id] = $s->subject_name;
+        // --- 4. 時間枠（コマ）マスタ：中央スケジュール表の行と対応 ---
+        $time_slot_result = \DB::select('id', 'slot_name', 'start_time', 'end_time')
+            ->from('time_slots')
+            ->order_by('id', 'asc')
+            ->execute();
+        $time_slots = array();
+        foreach ($time_slot_result as $tsrow) {
+            $time_slots[] = (object) $tsrow;
         }
 
+        // --- 5. 当日の授業データ：lesson_schedules を起点に関連をまとめて取得し $schedules（講師・生徒・複数生徒）へ組み立て ---
+        //     5a. 当日分の lesson_schedules を取得し、続く一括取得用に授業 ID 一覧を作る
+        $lesson_date = $display_dt->format('Y-m-d');
+        $sched_raw = \DB::select(
+            'id',
+            'lesson_date',
+            'time_slot_id',
+            'teacher_user_id',
+            'student_user_id',
+            'subject_id'
+        )
+            ->from('lesson_schedules')
+            ->where('lesson_date', $lesson_date)
+            ->order_by('time_slot_id', 'asc')
+            ->execute();
+        $schedule_ids        = array();
+        $schedule_rows_list  = array();
+        foreach ($sched_raw as $srow) {
+            $schedule_rows_list[] = $srow;
+            $schedule_ids[]       = (int) $srow['id'];
+        }
+        $schedule_ids = array_values(array_unique($schedule_ids));
+
+        //     5b. 複数生徒紐づけを授業IDごとにグループ化
+        $ss_by_ls = array();
+        if ( ! empty($schedule_ids)) {
+            $ss_rows = \DB::select('lesson_schedule_id', 'student_user_id')
+                ->from('lesson_schedule_students')
+                ->where('lesson_schedule_id', 'in', $schedule_ids)
+                ->order_by('id', 'asc')
+                ->execute();
+            foreach ($ss_rows as $ssrow) {
+                $lsid = (int) $ssrow['lesson_schedule_id'];
+                if ( ! isset($ss_by_ls[$lsid])) {
+                    $ss_by_ls[$lsid] = array();
+                }
+                $ss_by_ls[$lsid][] = $ssrow;
+            }
+        }
+
+        //     5c. 表示に必要な users をID一覧で一括取得 → $users_map、students で学年 → $grade_by_user
+        $user_ids_needed = array();
+        foreach ($schedule_rows_list as $srow) {
+            if ( ! empty($srow['teacher_user_id'])) {
+                $user_ids_needed[] = (int) $srow['teacher_user_id'];
+            }
+            if ( ! empty($srow['student_user_id'])) {
+                $user_ids_needed[] = (int) $srow['student_user_id'];
+            }
+        }
+        foreach ($ss_by_ls as $list) {
+            foreach ($list as $ssrow) {
+                $user_ids_needed[] = (int) $ssrow['student_user_id'];
+            }
+        }
+        $user_ids_needed = array_values(array_unique(array_filter($user_ids_needed)));
+
+        $users_map = array();
+        if ( ! empty($user_ids_needed)) {
+            $urows = \DB::select('id', 'last_name', 'first_name')
+                ->from('users')
+                ->where('id', 'in', $user_ids_needed)
+                ->execute();
+            foreach ($urows as $ur) {
+                $users_map[(int) $ur['id']] = (object) $ur;
+            }
+        }
+
+        $grade_by_user = array();
+        if ( ! empty($user_ids_needed)) {
+            $strows = \DB::select('user_id', 'grade_id')
+                ->from('students')
+                ->where('user_id', 'in', $user_ids_needed)
+                ->execute();
+            foreach ($strows as $str) {
+                $grade_by_user[(int) $str['user_id']] = (int) $str['grade_id'];
+            }
+        }
+
+        //     5d. 授業×生徒ごとの科目（テーブルがある場合のみ一括取得 → $lsss_map）
+        $has_lsss = \DBUtil::table_exists('lesson_schedule_student_subjects');
+        $lsss_map = array();
+        if ($has_lsss && ! empty($schedule_ids)) {
+            $lrows = \DB::select('lesson_schedule_id', 'student_user_id', 'subject_id')
+                ->from('lesson_schedule_student_subjects')
+                ->where('lesson_schedule_id', 'in', $schedule_ids)
+                ->execute();
+            foreach ($lrows as $lr) {
+                $k            = (int) $lr['lesson_schedule_id'] . '_' . (int) $lr['student_user_id'];
+                $lsss_map[$k] = (int) $lr['subject_id'];
+            }
+        }
+
+        //     5e. ビュー／下処理と同じ形になるよう $schedules オブジェクトを生成（teacher, student, schedule_students）
+        $schedules = array();
+        foreach ($schedule_rows_list as $srow) {
+            $ls                  = (object) $srow;
+            $ls->id              = (int) $ls->id;
+            $ls->time_slot_id    = (int) $ls->time_slot_id;
+            $ls->teacher_user_id = (int) $ls->teacher_user_id;
+            $ls->student_user_id = (isset($srow['student_user_id']) && $srow['student_user_id'] !== null && $srow['student_user_id'] !== '')
+                ? (int) $srow['student_user_id']
+                : 0;
+            $ls->subject_id = (isset($srow['subject_id']) && $srow['subject_id'] !== null)
+                ? (int) $srow['subject_id']
+                : 0;
+            $tuid           = $ls->teacher_user_id;
+            $ls->teacher    = ($tuid && isset($users_map[$tuid])) ? $users_map[$tuid] : null;
+            $suid           = $ls->student_user_id;
+            $ls->student    = ($suid && isset($users_map[$suid])) ? $users_map[$suid] : null;
+            $ls->schedule_students = array();
+            if (isset($ss_by_ls[$ls->id])) {
+                foreach ($ss_by_ls[$ls->id] as $ssrow) {
+                    $ss                  = new \stdClass();
+                    $ss->student_user_id = (int) $ssrow['student_user_id'];
+                    $vsid                = $ss->student_user_id;
+                    $ss->student         = isset($users_map[$vsid]) ? $users_map[$vsid] : null;
+                    $ls->schedule_students[] = $ss;
+                }
+            }
+            $schedules[] = $ls;
+        }
+
+        // --- 6. 科目マスタ：一覧 $subjects と ID→名前 $subject_names_by_id ---
+        $subj_res = \DB::select('id', 'subject_name')
+            ->from('subjects')
+            ->order_by('id', 'asc')
+            ->execute();
+        $subject_names_by_id = array();
+        $subjects            = array();
+        foreach ($subj_res as $sj) {
+            $subject_names_by_id[(int) $sj['id']] = $sj['subject_name'];
+            $subjects[]                         = (object) $sj;
+        }
+
+        // --- 7. 中央メイン：時間帯IDごとに $lesson_slots（講師名・生徒表示・編集用ID・units）を構築 ---
         $lesson_slots = array();
         foreach ($time_slots as $ts) {
-            $lesson_slots[$ts->id] = array();
+            $lesson_slots[(int) $ts->id] = array();
         }
-        $has_lsss = \DBUtil::table_exists('lesson_schedule_student_subjects');
         foreach ($schedules as $ls) {
             $tid = (int) $ls->time_slot_id;
             if ( ! isset($lesson_slots[$tid])) {
@@ -96,13 +291,11 @@ class Controller_Admin extends Controller_Base
                     $student_user_ids[] = $sid;
                     $student_display_name = $ss->student ? ($ss->student->last_name . ' ' . $ss->student->first_name) : '';
                     $student_names[] = $student_display_name;
-                    $stu = \Model_Student::find('first', array('where' => array('user_id' => $sid)));
-                    $grade_id = $stu ? (int) $stu->grade_id : 0;
+                    $grade_id = isset($grade_by_user[$sid]) ? $grade_by_user[$sid] : 0;
                     $subject_id = 0;
                     if ($has_lsss) {
-                        $row = \DB::select('subject_id')->from('lesson_schedule_student_subjects')
-                            ->where('lesson_schedule_id', $ls->id)->where('student_user_id', $sid)->limit(1)->execute()->current();
-                        $subject_id = $row ? (int) $row['subject_id'] : 0;
+                        $k = (int) $ls->id . '_' . $sid;
+                        $subject_id = isset($lsss_map[$k]) ? $lsss_map[$k] : 0;
                     }
                     $subject_display_name = isset($subject_names_by_id[$subject_id]) ? $subject_names_by_id[$subject_id] : '';
                     $display_parts[] = $student_display_name . '(' . $subject_display_name . ')';
@@ -135,6 +328,7 @@ class Controller_Admin extends Controller_Base
             );
         }
 
+        // --- 8. 右カレンダー周り：ヘッダ表示日・その月の日付グリッド $calendar_weeks ---
         $weekday_ja = array('日', '月', '火', '水', '木', '金', '土');
         $display_date = $display_dt->format('n/j') . '(' . $weekday_ja[(int) $display_dt->format('w')] . ')';
 
@@ -168,16 +362,20 @@ class Controller_Admin extends Controller_Base
             $calendar_weeks[] = $week;
         }
 
+        //     8b. その月の全日について lesson_schedules を範囲取得し、日×コマの有無ラベル $monthly_lessons（セルに A/B/C 等）
         $first_str = $first->format('Y-m-d');
         $last_str  = $last->format('Y-m-d');
-        $month_schedules = \Model_Lesson_Schedule::find('all', array(
-            'where' => array(
-                array('lesson_date', '>=', $first_str),
-                array('lesson_date', '<=', $last_str),
-            ),
-            'order_by' => array('lesson_date' => 'asc', 'time_slot_id' => 'asc'),
-        ));
-        $month_schedules = $month_schedules ?: array();
+        $month_result = \DB::select('lesson_date', 'time_slot_id')
+            ->from('lesson_schedules')
+            ->where('lesson_date', '>=', $first_str)
+            ->where('lesson_date', '<=', $last_str)
+            ->order_by('lesson_date', 'asc')
+            ->order_by('time_slot_id', 'asc')
+            ->execute();
+        $month_schedules = array();
+        foreach ($month_result as $mr) {
+            $month_schedules[] = (object) $mr;
+        }
 
         $slot_labels = array();
         foreach ($time_slots as $ts) {
@@ -195,6 +393,7 @@ class Controller_Admin extends Controller_Base
 
         $selected_day = (int) $display_dt->format('j');
 
+        // --- 9. カレンダー ‹ › 用：前月・次月へ飛ぶ GET URL（year/month） ---
         $cal_dt = new \DateTime($cal_year . '-' . $cal_month . '-01');
         $prev_dt = clone $cal_dt;
         $prev_dt->modify('first day of previous month');
@@ -209,8 +408,7 @@ class Controller_Admin extends Controller_Base
             'month' => $next_dt->format('n'),
         ));
 
-        $subjects = \Model_Subject::find('all', array('order_by' => array('id' => 'asc')));
-        $subjects = $subjects ?: array();
+        // --- 10. モーダル・フロント用：科目JSON、学年別生徒JSON、履修科目マップ $student_enrollments ---
         $subjects_for_js = array();
         foreach ($subjects as $s) {
             $subjects_for_js[] = array(
@@ -244,40 +442,51 @@ class Controller_Admin extends Controller_Base
             );
         }
 
+        //     10b. student_subjects から「生徒user_id → 履修科目ID配列」
         $student_enrollments = array();
-        $enrollments_raw = \Model_Student_Subject::find('all');
-        if ($enrollments_raw) {
-            foreach ($enrollments_raw as $es) {
-                $uid = (int) $es->student_user_id;
-                if ( ! isset($student_enrollments[$uid])) {
-                    $student_enrollments[$uid] = array();
-                }
-                $student_enrollments[$uid][] = (int) $es->subject_id;
+        $enroll_result = \DB::select('student_user_id', 'subject_id')
+            ->from('student_subjects')
+            ->execute();
+        foreach ($enroll_result as $es) {
+            $uid = (int) $es['student_user_id'];
+            if ( ! isset($student_enrollments[$uid])) {
+                $student_enrollments[$uid] = array();
             }
+            $student_enrollments[$uid][] = (int) $es['subject_id'];
         }
 
+        // --- 11. スケジュール画面ビューへ一括渡し ---
         $this->template->content = View::forge('admin/schedule/home', array(
-            'teachers'              => $teachers,
-            'grades'                => $grades,
-            'students_by_grade'     => $students_by_grade,
-            'students_by_grade_json' => $students_by_grade_json,
-            'student_enrollments'   => $student_enrollments,
-            'display_date'          => $display_date,
-            'time_slots'            => $time_slots,
-            'lesson_slots'          => $lesson_slots,
-            'calendar_month'        => $calendar_month,
-            'calendar_year'         => $calendar_year,
-            'calendar_weeks'        => $calendar_weeks,
-            'selected_day'          => $selected_day,
-            'calendar_month_num'    => $cal_month,
-            'calendar_year_num'     => $cal_year,
-            'prev_url'              => $prev_url,
-            'next_url'              => $next_url,
-            'schedule_lesson_date'  => $lesson_date,
-            'subjects'              => $subjects,
-            'subjects_for_js'       => $subjects_for_js,
-            'students_flat'         => $students_flat,
-            'monthly_lessons'       => $monthly_lessons,
+            'teachers'               => $teachers, // 左サイド講師リスト・モーダル講師プルダウン
+            'grades'                 => $grades, // 学年マスタ（生徒紐づけ付きオブジェクト）
+            'students_by_grade'      => $students_by_grade, // 左サイド：学年見出し＋生徒一覧用
+
+            'students_by_grade_json' => $students_by_grade_json, // JS：学年→生徒選択のデータ
+            'student_enrollments'    => $student_enrollments, // JS：生徒ごと履修科目ID（科目絞り込み等）
+
+            'display_date'           => $display_date, // 中央ヘッダ「n/j(曜)」表示
+            'time_slots'             => $time_slots, // 中央：時間枠（コマ）の行
+            'lesson_slots'           => $lesson_slots, // 中央：コマごとの授業セル（講師・生徒・編集用data等）
+
+            'calendar_month'         => $calendar_month, // 右カレンダー：「n月」見出し
+            'calendar_year'          => $calendar_year, // 右カレンダー：年見出し
+            'calendar_weeks'         => $calendar_weeks, // 右カレンダー：週ごとの日付マス目
+
+            'selected_day'           => $selected_day, // 選択中の「日」（1〜31）
+            'calendar_month_num'     => $cal_month, // カレンダーが表示している月（1〜12）
+            'calendar_year_num'      => $cal_year, // カレンダーが表示している年
+
+            'prev_url'               => $prev_url, // 前月へ（GET year/month）
+            'next_url'               => $next_url, // 次月へ（GET year/month）
+
+            'schedule_lesson_date'   => $lesson_date, // 表示中の日付 Y-m-d（リンク・フォームhidden・data属性）
+
+            'subjects'               => $subjects, // 科目一覧オブジェクト（テンプレート用）
+
+            'subjects_for_js'        => $subjects_for_js, // 科目を JSON 化してモーダルJSへ
+            'students_flat'          => $students_flat, // JS：生徒一覧フラット配列
+
+            'monthly_lessons'        => $monthly_lessons, // その月の日×コマに授業あり（A/B/C表示等）
         ));
     }
 

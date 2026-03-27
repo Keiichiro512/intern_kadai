@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($title) ? e($title) : 'HRCloud'; ?></title>
+    <title><?php echo isset($title) ? e($title) : 'スケジュール管理システム'; ?></title>
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Noto Sans JP (Google Fonts) -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Page CSS -->
     <?php if (isset($style_sheet)): ?>
+        <!-- admin.cssが設定されていない場合$style_sheetが設定されている場合は$style_sheet(それぞれのactionで設定されたcss)を読み込む -->
         <?php echo Asset::css($style_sheet); ?>
     <?php endif; ?>
     <?php if (\Session::get('user_id') && (empty($style_sheet) || $style_sheet !== 'admin.css')): ?>
@@ -37,6 +38,7 @@
             elseif ($role_id === 3) $home_uri = 'student/home';
             elseif ($role_id === 4) $home_uri = 'parent/home';
             ?>
+            <!-- ログイン画面で表示させないため -->
             <?php if ($home_uri !== ''): ?>
                 <a href="<?php echo \Uri::create($home_uri); ?>" class="admin-header__link--home">ホームに戻る</a>
             <?php endif; ?>

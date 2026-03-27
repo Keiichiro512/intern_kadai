@@ -9,40 +9,40 @@ class Controller_Auth extends Controller_Template
         return parent::before();
     }
 
+    // 確認済み
     public function action_login()
     {
+        // template.phpのタイトル（$title）を設定する；タブのタイトルを設定する
         $this->template->title       = 'ログイン';
+        // template.phpのstyle_sheet（$style_sheet）を設定する；cssを読み込む
         $this->template->style_sheet = 'auth.css';
+        // まだエラーなし」という初期状態
         $error = false;
 
+        // 「今のリクエストが POST かどうか」 を調べて、POST のときだけ if の中の処理（ログイン試行）を実行
         if (Input::method() === 'POST') {
+            // trim(...) … ユーザー名の前後の余分な空白を除きます。
             $username = trim((string) Input::post('username', ''));
+            // 第一引数：'password' … <form name="password"> の password と同じ名前で探す
+            // 第二引数：'' … 何も送られてこなかったときは 空文字 にする、という意味（エラーにしないため）
             $password = (string) Input::post('password', '');
 
             if ($password === '') {
                 $error = true;
             } else {
-                $user = Model_User::find('first', array(
-                    'where' => array(
-                        array('username', $username),
-                    ),
-                ));
-
-                $stored_hash = $user ? (string) $user->password : '';
-
-                $query = \DB::select('password')
+                $row = \DB::select('id', 'role_id', 'username', 'password')
                     ->from('users')
                     ->where('username', $username)
-                    ->execute();
-                $raw_hash = $query->get('password');
+                    ->execute()
+                    ->current();
 
-                $clean_hash = trim((string) $raw_hash);
-                $is_valid = password_verify($password, $clean_hash);
+                    // PHP の 型キャスト（型を変換する書き方） で、連想配列 $row を「オブジェクト」に変換。配列のキーがそのままプロパティ名になる。
+                $user = (is_array($row) && isset($row['id'])) ? (object) $row : null;
+                // $user? オブジェクトなど中身がある値は真
+                $stored_hash = $user ? trim((string) $user->password) : '';
+                $verify_ok   = $this->verify_password($password, $stored_hash);
 
-                $verify_ok = $this->verify_password($password, $stored_hash);
-                $verify_ok = ($verify_ok || $is_valid);
-
-                if (empty($user) || ! $verify_ok) {
+                if ($user === null || ! $verify_ok) {
                     $error = true;
                 } else {
                     Session::set('user_id', (int) $user->id);
@@ -51,6 +51,8 @@ class Controller_Auth extends Controller_Template
 
                     switch ((int) $user->role_id) {
                         case 1: // 塾長
+                            // Uri::create は「URL の文字列を作る」だけで、「移動する」処理ではない。
+                            // Response::redirect('admin/home') は「ブラウザに別ページへ行かせる」処理 
                             Response::redirect('admin/home');
                             break;
                         case 2: // 講師
@@ -63,6 +65,7 @@ class Controller_Auth extends Controller_Template
                             Response::redirect('parent/home');
                             break;
                         default:
+                            // セッションに保存されていたデータをまとめて消す。
                             Session::destroy();
                             $error = true;
                             break;
@@ -73,13 +76,17 @@ class Controller_Auth extends Controller_Template
 
         $this->template->content = View::forge('auth/login', [
             'error'    => $error,
+            // 失敗後も 入力した ID をフォームに残す（空なら空文字）
             'username' => Input::post('username', ''),
         ]);
     }
 
+    // 確認済み
     public function action_logout()
     {
+        // セッションに保存されていたデータをまとめて消す。
         Session::destroy();
+        // ログイン画面にリダイレクトする
         Response::redirect('auth/login');
     }
 
@@ -104,6 +111,7 @@ class Controller_Auth extends Controller_Template
         $this->template->content     = View::forge('auth/access_denied');
     }
 
+    // 確認済み
     /**
      * 入力パスワードとDBのハッシュを照合する。
      * DBには password_hash($raw, PASSWORD_DEFAULT) で保存された値が入っている前提。
@@ -114,7 +122,12 @@ class Controller_Auth extends Controller_Template
         if ($stored_hash === '' || $input_password === '') {
             return false;
         }
-
+        // password_verify (第1引数：入力された平文パスワード, 第2引数：保存しておいたハッシュ)を渡すと、
+        // 「この平文からこのハッシュが作られたか」 を内部で判定し、合っていれば true、違えば false を返す。
         return password_verify($input_password, $stored_hash);
+
+        // ハッシュ化せずにもDBに保存できる。DBの内容が漏れた時に、平文でパスワードが見られてしまうのを防ぐ。
+        
     }
+
 }

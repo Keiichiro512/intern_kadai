@@ -22,7 +22,7 @@
                                 name="target_type"
                                 id="target_student"
                                 value="student"
-                                <?php echo ($input['target_type'] === 'student') ? 'checked' : ''; ?>
+                                data-bind="checked: targetType"
                             >
                             <label class="form-check-label" for="target_student">生徒</label>
                         </div>
@@ -33,7 +33,7 @@
                                 name="target_type"
                                 id="target_teacher"
                                 value="teacher"
-                                <?php echo ($input['target_type'] !== 'student') ? 'checked' : ''; ?>
+                                data-bind="checked: targetType"
                             >
                             <label class="form-check-label" for="target_teacher">講師</label>
                         </div>
@@ -86,7 +86,8 @@
                 </div>
 
                 <!-- 生徒専用項目（学年・受講科目） -->
-                <div id="student-extra-fields" class="<?php echo ($input['target_type'] === 'student') ? '' : 'd-none'; ?>">
+                <!--echo (条件) ? A : B; は、「条件が真ならA、偽ならBを出力する」 -->
+                <div id="student-extra-fields" class="<?php echo ($input['target_type'] === 'student') ? '' : 'd-none'; ?>" data-bind="css: { 'd-none': !isStudent() }">
                     <!-- 学年 -->
                     <div class="row g-3 align-items-center mb-4">
                         <div class="col-auto">
@@ -137,7 +138,7 @@
                 </div>
 
                 <!-- 保護者情報（生徒選択時のみ表示） -->
-                <div id="parent-fields" class="<?php echo ($input['target_type'] === 'student') ? '' : 'd-none'; ?>">
+                <div id="parent-fields" class="<?php echo ($input['target_type'] === 'student') ? '' : 'd-none'; ?>" data-bind="css: { 'd-none': !isStudent() }">
                     <h2 class="h5 mb-3">保護者情報（任意）</h2>
 
                     <!-- 保護者氏名 -->
@@ -195,33 +196,25 @@
     </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/knockout@3.5.1/build/output/knockout-latest.js"></script>
 <script>
-    // 対象（生徒 / 講師）選択による表示切り替え
     document.addEventListener('DOMContentLoaded', function () {
-        const studentRadio = document.getElementById('target_student');
-        const teacherRadio = document.getElementById('target_teacher');
-        const studentExtra = document.getElementById('student-extra-fields');
-        const parentFields = document.getElementById('parent-fields');
-
-        function updateVisibility() {
-            if (studentRadio.checked) {
-                studentExtra.classList.remove('d-none');
-                if (parentFields) {
-                    parentFields.classList.remove('d-none');
-                }
-            } else {
-                studentExtra.classList.add('d-none');
-                if (parentFields) {
-                    parentFields.classList.add('d-none');
-                }
-            }
+        const formElement = document.querySelector('form.user-form');
+        if (!formElement || typeof ko === 'undefined') {
+            return;
         }
 
-        if (studentRadio && teacherRadio && studentExtra) {
-            studentRadio.addEventListener('change', updateVisibility);
-            teacherRadio.addEventListener('change', updateVisibility);
-            updateVisibility();
+        function UserCreateViewModel(initialTargetType) {
+            // 選択状態を持つ可変の状態（Observable）です。
+            this.targetType = ko.observable(initialTargetType);
+            this.isStudent = ko.pureComputed(function () {
+                // targetType() === 'student' を判定する計算プロパティです。
+                return this.targetType() === 'student';
+            }, this);
         }
+
+        const initialTargetType = <?php echo json_encode(($input['target_type'] === 'student') ? 'student' : 'teacher'); ?>;
+        ko.applyBindings(new UserCreateViewModel(initialTargetType), formElement);
     });
 </script>
 

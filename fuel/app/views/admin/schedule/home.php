@@ -170,7 +170,7 @@ $delete_url  = Uri::create('admin/schedule/delete');
     </div>
 </main>
 
-<!-- 授業 新規登録・編集 モーダル -->
+<!-- 授業の登録 -->
 <div id="schedule-modal" class="schedule-modal" role="dialog" aria-labelledby="schedule-modal-title" aria-hidden="true">
     <div class="schedule-modal__overlay"></div>
     <div class="schedule-modal__box">
