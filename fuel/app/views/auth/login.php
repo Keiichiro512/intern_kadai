@@ -21,7 +21,7 @@
 
                     <!-- ログインフォーム -->
                     <?php echo Form::open(['action' => Uri::create('auth/login'), 'method' => 'post', 'class' => 'login-form']); ?>
-
+                    <?php echo Form::csrf(); ?>
                         <div class="login-form__group">
                         <!-- label の for="username" と input の id="username" を揃えると、ラベルをクリックしたときに入力欄にフォーカスが移る。 -->
                         <!-- name="username" … サーバー側で Input::post('username') として受け取る名前。コントローラと一致させる必要があります。 -->

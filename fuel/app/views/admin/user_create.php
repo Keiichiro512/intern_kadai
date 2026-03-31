@@ -11,6 +11,7 @@
             <?php endif; ?>
 
             <form method="post" class="user-form">
+                <?php echo Form::csrf(); ?>
                 <!-- 対象：生徒 / 講師 -->
                 <div class="mb-4">
                     <label class="form-label user-form-label">対象：</label>
@@ -206,7 +207,9 @@
 
         function UserCreateViewModel(initialTargetType) {
             // 選択状態を持つ可変の状態（Observable）です。
+            // ko.observable（状態を持つ）
             this.targetType = ko.observable(initialTargetType);
+            // ko.pureComputed（状態から派生値を作る）
             this.isStudent = ko.pureComputed(function () {
                 // targetType() === 'student' を判定する計算プロパティです。
                 return this.targetType() === 'student';

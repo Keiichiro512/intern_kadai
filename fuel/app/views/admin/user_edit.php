@@ -32,6 +32,7 @@
             </div>
 
             <form method="post" class="user-form" action="<?php echo Uri::create('admin/edit_user/' . (int) $user->id); ?>">
+                <?php echo Form::csrf(); ?>
                 <!-- 氏名 -->
                 <div class="row g-3 align-items-center mb-4">
                     <div class="col-auto">
@@ -142,6 +143,7 @@
             <a href="<?php echo Uri::create('admin/force_test_password/' . (int) $user->id); ?>" class="btn btn-outline-warning btn-sm mb-4">パスワードを強制的に &quot;testpass123&quot; に変更する</a>
 
             <form method="post" action="<?php echo Uri::create('admin/delete_user/' . (int) $user->id); ?>" onsubmit="return confirmDelete();">
+                <?php echo Form::csrf(); ?>
                 <button type="submit" class="btn btn-danger">このユーザーを削除する</button>
             </form>
         </div>

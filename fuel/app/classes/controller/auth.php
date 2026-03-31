@@ -1,11 +1,13 @@
 <?php
 
+// 未ログインでも見せる画面」用のコントローラ→Controller_Templateを継承している
 class Controller_Auth extends Controller_Template
 {
     public $template = 'template';
-
     public function before()
     {
+        // FuelPHPのルール：before() が false を返すと そのリクエストでは action_* が実行されないから
+        // 親が false を返した場合も、それをちゃんと上に伝えるために return している。
         return parent::before();
     }
 
@@ -102,7 +104,7 @@ class Controller_Auth extends Controller_Template
     }
 
     /**
-     * 権限不足時に表示するページ。
+     * 権限不足時に表示するページを出す→→→→→→→→→→→→→要らなくなった。
      */
     public function action_access_denied()
     {
@@ -114,8 +116,6 @@ class Controller_Auth extends Controller_Template
     // 確認済み
     /**
      * 入力パスワードとDBのハッシュを照合する。
-     * DBには password_hash($raw, PASSWORD_DEFAULT) で保存された値が入っている前提。
-     * 必ず password_verify（平文・ハッシュのペア）で検証し、他方式は使わない。
      */
     private function verify_password($input_password, $stored_hash)
     {
@@ -127,7 +127,7 @@ class Controller_Auth extends Controller_Template
         return password_verify($input_password, $stored_hash);
 
         // ハッシュ化せずにもDBに保存できる。DBの内容が漏れた時に、平文でパスワードが見られてしまうのを防ぐ。
-        
+
     }
 
 }

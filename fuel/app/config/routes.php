@@ -19,7 +19,10 @@ return array(
     'admin/home'                  => 'admin/home',
     'admin/schedule'              => 'admin/schedule_home',
     'admin/schedule/save'         => 'admin/schedule_save',
+    'admin/schedule/day'          => 'admin/schedule_day', //途中追加
     'admin/schedule/delete'       => 'admin/schedule_delete',
+    'admin/schedule/report'       => 'admin/schedule_report',//途中追加
+    'admin/schedule/lesson_report' => 'admin/schedule_lesson_report',//途中追加
     'admin/user_create'           => 'admin/create',
     'admin/user_create_complete'  => 'admin/create_complete',
     'admin/users/edit'            => 'admin/user_list',
@@ -27,6 +30,7 @@ return array(
     'admin/force_test_password/(:id)' => 'admin/force_test_password/$1',
     'admin/delete_user/(:id)'     => 'admin/delete_user/$1',
     'admin/masters_home'          => 'admin/home',
+
 
     // 各ロールのトップページ
     'teacher/home' => 'teacher/home',

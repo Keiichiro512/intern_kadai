@@ -6,28 +6,35 @@
  */
 $teachers          = isset($teachers) ? $teachers : array();
 $students_by_grade = isset($students_by_grade) ? $students_by_grade : array();
-$display_date     = isset($display_date) ? $display_date : '';
+$display_date     = isset($display_date) ? $display_date : ''; //3/29(日) という表記になる  admin.php で作成した $display_date
 $time_slots       = isset($time_slots) ? $time_slots : array();
 $lesson_slots     = isset($lesson_slots) ? $lesson_slots : array();
 $calendar_month   = isset($calendar_month) ? $calendar_month : '';
 $calendar_year    = isset($calendar_year) ? $calendar_year : '';
-$calendar_weeks   = isset($calendar_weeks) ? $calendar_weeks : array();
+$calendar_weeks   = isset($calendar_weeks) ? $calendar_weeks : array(); //コントローラ（admin.php）で、その月のカレンダーを「週ごとの行」にした二次元配列です。
 $selected_day     = isset($selected_day) ? (int) $selected_day : 0;
 $calendar_month_num = isset($calendar_month_num) ? (int) $calendar_month_num : (int) date('n');
 $calendar_year_num  = isset($calendar_year_num) ? (int) $calendar_year_num : (int) date('Y');
+
+// date() は、指定した書式で日付・時刻を文字列として返す組み込み関数です。第一引数：フォーマット、第二引数：省略可能
+// 第2引数は 「理屈上は秒数」 だが、自分で桁の大きい数字を用意する必要はない。
+// 2026-03-31 のような日付を出したいなら、strtotime('2026-03-31') や new DateTime('2026-03-31') などで その瞬間の値を生成してから date() に渡す、というのが普通です。
 $today_day   = (int) date('j');
 $today_month = (int) date('n');
 $today_year  = (int) date('Y');
+
 $prev_url    = isset($prev_url) ? $prev_url : Uri::create('admin/schedule');
 $next_url    = isset($next_url) ? $next_url : Uri::create('admin/schedule');
-$schedule_lesson_date = isset($schedule_lesson_date) ? $schedule_lesson_date : '';
-$subjects    = isset($subjects) ? $subjects : array();
-$subjects_for_js = isset($subjects_for_js) ? $subjects_for_js : array();
-$students_flat = isset($students_flat) ? $students_flat : array();
-$grades      = isset($grades) ? $grades : array();
-$students_by_grade_json = isset($students_by_grade_json) ? $students_by_grade_json : array();
-$student_enrollments = isset($student_enrollments) ? $student_enrollments : array();
-$monthly_lessons = isset($monthly_lessons) ? $monthly_lessons : array();
+
+$schedule_lesson_date = isset($schedule_lesson_date) ? $schedule_lesson_date : '';            //コントローラから渡っていればそのまま使い、なければ空文字列
+$subjects    = isset($subjects) ? $subjects : array();                                        //コントローラから渡っていればそのまま使い、なければ空配列
+$subjects_for_js = isset($subjects_for_js) ? $subjects_for_js : array();                      //コントローラから渡っていればそのまま使い、なければ空配列
+$students_flat = isset($students_flat) ? $students_flat : array();                            //コントローラから渡っていればそのまま使い、なければ空配列
+$grades      = isset($grades) ? $grades : array();                                            //コントローラから渡っていればそのまま使い、なければ空配列
+$students_by_grade_json = isset($students_by_grade_json) ? $students_by_grade_json : array(); //コントローラから渡っていればそのまま使い、なければ空配列
+$student_enrollments = isset($student_enrollments) ? $student_enrollments : array();          //コントローラから渡っていればそのまま使い、なければ空配列
+$monthly_lessons = isset($monthly_lessons) ? $monthly_lessons : array();                      //コントローラから渡っていればそのまま使い、なければ空配列
+
 $save_url    = Uri::create('admin/schedule/save');
 $delete_url  = Uri::create('admin/schedule/delete');
 ?>
@@ -69,7 +76,8 @@ $delete_url  = Uri::create('admin/schedule/delete');
         <!-- 2. 中央メイン：スケジュール表示 -->
         <div class="schedule-main">
             <header class="schedule-main__header">
-                <h1 class="schedule-main__date"><?php echo e($display_date); ?></h1>
+                <!-- ここに新しいViewを追加する -->
+                <a href="<?php echo Uri::create('admin/schedule/day', array(), array('date' => $schedule_lesson_date)); ?>"><h1 class="schedule-main__date"><?php echo e($display_date); ?></h1></a>
             </header>
             <div class="schedule-main__slots">
                 <?php foreach ($time_slots as $slot): ?>
@@ -123,34 +131,49 @@ $delete_url  = Uri::create('admin/schedule/delete');
                         </tr>
                     </thead>
                     <tbody>
+                        <!-- カレンダーの日付を表示している部分 理解　OK -->
                         <?php foreach ($calendar_weeks as $week): ?>
                             <tr>
                                 <?php foreach ($week as $day): ?>
                                     <?php
                                     $day_int = $day !== '' ? (int) $day : 0;
-                                    $is_selected = ($day_int > 0 && $day_int === $selected_day);
-                                    $is_today = ($day_int > 0 && $day_int === $today_day && $calendar_year_num === $today_year && $calendar_month_num === $today_month);
+                                    $is_selected = ($day_int > 0 && $day_int === $selected_day);//選択された日付
+                                    $is_today = ($day_int > 0 && $day_int === $today_day && $calendar_year_num === $today_year && $calendar_month_num === $today_month);//今日の日付
+                                    // CSSのクラスの名前を指定している。（選択された日付と今日の日付で分けている）
                                     $cell_class = 'schedule-calendar__day';
                                     if ($is_selected) $cell_class .= ' is-active';
                                     if ($is_today)   $cell_class .= ' is-today';
+
                                     $day_link = '';
                                     $date_ymd = '';
                                     if ($day_int > 0) {
+                                        // 書式文字列と値を渡すと、埋め込んだあとの文字列を作ってreturn
+                                        // %04d →　整数を 最低4桁、足りない分は 先頭を 0 で埋める　 // %02d … 同様に 2桁ゼロ埋め
+                                        // sprintf('%04d-%02d-%02d', 2026, 3, 5);　→ "2026-03-05"
+                                        // 複数の引数は「書式に出てくる % の個数と同じ数だけ」渡し、左の % から順に 第2引数・第3引数・… と結びつく。
                                         $date_ymd = sprintf('%04d-%02d-%02d', $calendar_year_num, $calendar_month_num, $day_int);
+
                                         $day_url = Uri::create('admin/schedule', array(), array('date' => $date_ymd, 'year' => $calendar_year_num, 'month' => $calendar_month_num));
+                                        // <http://localhost/admin/schedule?date=2026-03-04&year=2026&month=3> のような URL が生成
+                                        // localhost；ホスト名です。自分の PC 上の Web サーバ（開発環境）を指しています。本番では example.com のようなドメインに置き換わります。これは Config::get('base_url') に含まれる部分で、Uri::create が「サイトの土台」として先頭に付けます。
+                                        // Uri::create の第3引数に配列を渡すと、内部で http_build_query($get_variables) が使われ、その結果が ?key=value&... として URL に追加されます。
                                         $day_link = '<a href="' . e($day_url) . '" class="schedule-calendar__day-link">' . e($day) . '</a>';
                                     }
                                     $day_lessons = ($date_ymd !== '' && isset($monthly_lessons[$date_ymd])) ? $monthly_lessons[$date_ymd] : array();
                                     ?>
+
                                     <td class="<?php echo e($cell_class); ?>">
                                         <?php if ($day_int > 0): ?>
                                             <div class="schedule-calendar__day-inner">
                                                 <a href="<?php echo e($day_url); ?>" class="stretched-link" aria-label="日付を選択"></a>
                                                 <div class="cell-row cell-date"><?php echo $day_link; ?></div>
+                                                <!-- カレンダー上の日付マスにその日にどのコマの授業が入ってるかを示す -->
                                                 <?php
                                                 $slots = array('A' => 1, 'B' => 2, 'C' => 3);
                                                 foreach ($slots as $label => $id):
-                                                    $has_lesson = isset($monthly_lessons[$date_ymd][$id]);
+                                                    // isset(...) は式として true または false を返す関数です。
+                                                    $has_lesson = isset($monthly_lessons[$date_ymd][$id]); //admin.php で作成した $monthly_lessons : 日付に対してどのコマの授業が入っているかを管理している配列
+                                                    // strtolower()：英字の大文字を小文字にそろえた文字列を返す組み込み関数です。（'A' → 'a'）
                                                     $slot_class = 'cell-row cell-slot slot-' . strtolower($label);
                                                     if ( ! $has_lesson) $slot_class .= ' cell-slot--empty';
                                                 ?>
@@ -169,6 +192,7 @@ $delete_url  = Uri::create('admin/schedule/delete');
 
     </div>
 </main>
+
 
 <!-- 授業の登録 -->
 <div id="schedule-modal" class="schedule-modal" role="dialog" aria-labelledby="schedule-modal-title" aria-hidden="true">
@@ -267,6 +291,7 @@ $delete_url  = Uri::create('admin/schedule/delete');
         return;
     }
 
+    //モーダルの表示と非表示の処理
     function openModal() {
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
@@ -436,8 +461,111 @@ $delete_url  = Uri::create('admin/schedule/delete');
         openModal();
     });
 
-    if (overlay) overlay.addEventListener('click', closeModal);
-    var cancelBtn = document.getElementById('schedule-modal-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            if (overlay) overlay.addEventListener('click', closeModal);
+            var cancelBtn = document.getElementById('schedule-modal-cancel');
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        // 削除フォームを fetch で非同期送信
+        var deleteForm = document.getElementById('schedule-form-delete');
+        // document.getElementById('〜') は、HTMLの中から id="〜" が付いた要素を1つ探して取得する処理です。見つかればその要素（DOM要素）が返り、見つからなければ null が返ります。
+        if (deleteForm) {
+            // 「削除」ボタン（disabled制御用）
+            var deleteButton = deleteForm.querySelector('button[type="submit"], input[type="submit"]');
+            // querySelector('CSSセレクタ') は、CSSの書き方（セレクタ）で条件に合う要素を1つ探して取得する処理です。
+
+            // エラー表示領域（なければ作る）
+            var modalBox = modal && modal.querySelector('.schedule-modal__box');
+            var deleteError = document.getElementById('schedule-modal-error');
+            if (!deleteError && modalBox) {
+                // 要素を作る（まだ画面には出ない）
+                deleteError = document.createElement('div');
+                // ステップ2: 属性やクラス、見た目を設定する
+                deleteError.id = 'schedule-modal-error';
+                deleteError.className = 'schedule-modal__error';
+                deleteError.style.display = 'none';
+                // 既存DOMに挿入する（ここで「画面に現れる」）
+                modalBox.insertBefore(deleteError, modalBox.querySelector('.schedule-modal__actions'));
+            }
+            // 「送信（submit）が起きた瞬間」に、ここに書いた関数を実行する
+            deleteForm.addEventListener('submit', function (event){
+                // ブラウザが本来やろうとする 「フォームを普通に送ってページ遷移する」 というデフォルト動作をキャンセル
+                event.preventDefault();
+                // deleteErrorに入っていたテキストをクリアする（前回のエラーが表示されていたら消す）
+                if (deleteError) {
+                    deleteError.textContent = '';
+                    deleteError.style.display = 'none';
+                }
+                // console.log('[schedule-delete] submit', deleteForm.action, Object.fromEntries(new FormData(deleteForm))); //テスト用
+                // HTTPリクエストのbody に、そのまま「フォーム送信と同じ形」で載せる　
+                var formData = new FormData(deleteForm); //FormDateの中身はどの様に決めているの？
+
+                //disabled = true：押せない・フォーカス的にも無効扱い（送信もできない）
+                if (deleteButton) deleteButton.disabled = true;
+
+                fetch(deleteForm.action, { 
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin' //credentials(資格情報)：same-originは、同一オリジンの場合のみ資格情報を送信する。
+                })
+
+                // response: サーバーから返ったHTTP応答を扱う Response オブジェクト（まだ中身を読んでない）
+                .then(function (response) {
+                    // console.log('[schedule-delete] HTTP', response.status, response.ok); //テスト用
+                    // 422/500 でも JSON を読みたいので、まず JSON へ
+                    // response.json()：JSONとして中身を取り出す　→　data に入ってくる
+                    return response.json().then(function (data) {
+                        return { response: response, data: data };
+                    });
+                })
+                //return { response: response, data: data };がresultの中身
+                .then(function (result) {
+                    console.log('[schedule-delete] body', result.data);
+                    // result の中にある data を取り出し、なければ空オブジェクト {} を使う
+                    var data = result.data || {};
+
+                    // data.ok:true のとき（削除成功）
+                    if (data.ok) {
+                        // モーダルを閉じる
+                        closeModal();
+                        // 今のページをやめて、別のURLにブラウザで移動する（ページ遷移する）
+                        // アドレスバーのURLが data.redirect に変わる　→ 例：/admin/schedule?year=2026&month=3&date=2026-03-31
+                        window.location.href = data.redirect;
+                        return;
+                    }
+
+                    // ok:false のとき（422など）
+                    var msg = data.error || '削除に失敗しました。';
+                    if (deleteError) {
+                        deleteError.textContent = msg;
+                        // ブロック要素として表示する（ここで「画面に現れる」）
+                        deleteError.style.display = 'block';
+                    } else {
+                        alert(msg);
+                    }
+                })
+
+
+                // JSONパース失敗やネットワークエラーの場合
+                .catch(function () {
+                    // console.log('[schedule-delete] catch');//テスト用
+                    var msg = '通信に失敗しました。時間をおいて再度お試しください。';
+                    if (deleteError) {
+                        deleteError.textContent = msg;
+                        // ブロック要素として表示する（ここで「画面に現れる」）
+                        deleteError.style.display = 'block';
+                    } else {
+                        alert(msg);
+                    }
+                })
+                .finally(function () {
+                        // disabled = false：再度操作できる状態に戻す
+                        if (deleteButton) deleteButton.disabled = false;
+                    });
+            });
+        }
 })();
 </script>

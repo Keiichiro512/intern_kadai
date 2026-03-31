@@ -45,8 +45,14 @@
             <a href="<?php echo \Uri::create('auth/logout'); ?>" class="admin-header__logout">ログアウト</a>
         </div>
     </header>
+    <footer class="site-footer">
+    <p><?php echo e(\Config::get('app_custom.copyright_line', " ")); ?></p>
+    </footer>
+
     <?php endif; ?>
     <?php echo $content; ?>
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
